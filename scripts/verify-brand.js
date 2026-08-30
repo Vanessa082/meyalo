@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const BRAND_DIR = path.join(__dirname, '../assets/brand');
 
@@ -36,7 +36,7 @@ const EXPECTED_FILES = [
   'social/avatar-512.png',
   // Splash
   'splash/splash-light.png',
-  'splash/splash-dark.png'
+  'splash/splash-dark.png',
 ];
 
 let failed = false;
@@ -58,7 +58,7 @@ EXPECTED_FILES.forEach((relPath) => {
     failed = true;
     return;
   }
-  
+
   const stats = fs.statSync(fullPath);
   if (stats.size === 0) {
     console.error(`❌ Empty asset: ${relPath}`);
@@ -70,9 +70,13 @@ EXPECTED_FILES.forEach((relPath) => {
 
 console.log('\n=======================================');
 if (failed) {
-  console.error('❌ Verification FAILED: Some branding assets are missing or invalid.');
+  console.error(
+    '❌ Verification FAILED: Some branding assets are missing or invalid.',
+  );
   process.exit(1);
 } else {
-  console.log('🎉 Verification PASSED: All canonical branding assets are complete and correct!');
+  console.log(
+    '🎉 Verification PASSED: All canonical branding assets are complete and correct!',
+  );
   process.exit(0);
 }

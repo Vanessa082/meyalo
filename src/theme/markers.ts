@@ -1,6 +1,12 @@
 import { Colors } from './colors';
 
-export type MarkerShape = 'pin' | 'square' | 'circle' | 'flag' | 'star' | 'triangle';
+export type MarkerShape =
+  | 'pin'
+  | 'square'
+  | 'circle'
+  | 'flag'
+  | 'star'
+  | 'triangle';
 
 export interface MarkerStateConfig {
   id: string;
@@ -91,12 +97,21 @@ export const MarkerStates: Record<string, MarkerStateConfig> = {
 };
 
 // Helper function to resolve theme colors for a given marker state
-export function getMarkerColors(state: keyof typeof MarkerStates, isDarkMode: boolean) {
+export function getMarkerColors(
+  state: keyof typeof MarkerStates,
+  isDarkMode: boolean,
+) {
   const config = MarkerStates[state];
-  if (!config) return { backgroundColor: Colors.light.markerPrimary, borderColor: Colors.light.elevated };
-  
+  if (!config)
+    return {
+      backgroundColor: Colors.light.markerPrimary,
+      borderColor: Colors.light.elevated,
+    };
+
   return {
-    backgroundColor: isDarkMode ? config.backgroundColorDark : config.backgroundColorLight,
+    backgroundColor: isDarkMode
+      ? config.backgroundColorDark
+      : config.backgroundColorLight,
     borderColor: isDarkMode ? config.borderColorDark : config.borderColorLight,
   };
 }

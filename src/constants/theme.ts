@@ -5,7 +5,7 @@
 
 import '@/global.css';
 import { Platform } from 'react-native';
-import { Colors as NewColors, Families, Spacing as NewSpacing } from '../theme';
+import { Families, Colors as NewColors, Spacing as NewSpacing } from '../theme';
 
 export const Colors = {
   light: {
@@ -29,16 +29,16 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 export const Fonts = Families;
 
 export const Spacing = {
-  half: NewSpacing.xxs,   // 2px
-  one: NewSpacing.xs,     // 4px
-  two: NewSpacing.sm,     // 8px
-  three: NewSpacing.lg,   // 16px
-  four: NewSpacing.xxl,   // 24px
-  five: NewSpacing.xxxl,  // 32px
-  six: 64,                // 64px
+  half: NewSpacing.xxs, // 2px
+  one: NewSpacing.xs, // 4px
+  two: NewSpacing.sm, // 8px
+  three: NewSpacing.lg, // 16px
+  four: NewSpacing.xxl, // 24px
+  five: NewSpacing.xxxl, // 32px
+  six: 64, // 64px
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
-export { Theme } from '../theme';
 export type { AppTheme } from '../theme';
+export { Theme } from '../theme';

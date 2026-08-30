@@ -1,24 +1,22 @@
-import React, { useEffect } from 'react';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
 import {
-  useFonts,
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
+  useFonts,
 } from '@expo-google-fonts/inter';
-
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useState } from 'react';
+import { useColorScheme } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
+export default function RootLayout() {
   const colorScheme = useColorScheme();
-  
-  // Load Inter fonts from Google Fonts
+  const [queryClient] = useState(() => new QueryClient());
+
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -26,21 +24,21 @@ export default function TabLayout() {
     Inter_700Bold,
   });
 
-  // Hide splash screen or log error if font loading failed
   useEffect(() => {
-    if (fontError) {
-      console.warn('Failed to load Inter fonts, falling back to system defaults.', fontError);
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
     }
-  }, [fontError]);
+  }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) {
     return null;
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }} />
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }

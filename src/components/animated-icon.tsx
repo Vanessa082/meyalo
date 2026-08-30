@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { Colors } from '../theme/colors';
 
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
@@ -34,7 +33,12 @@ export function AnimatedSplashOverlay() {
     },
   });
 
-  const image = <Image style={styles.splashImage} source={require('../../assets/brand/mark/meyalo-mark-teal-512.png')} />;
+  const image = (
+    <Image
+      style={styles.splashImage}
+      source={require('../../assets/brand/mark/meyalo-mark-teal-512.png')}
+    />
+  );
 
   return animate ? (
     <Animated.View
@@ -44,7 +48,8 @@ export function AnimatedSplashOverlay() {
           scheduleOnRN(setVisible, false);
         }
       })}
-      style={styles.splashOverlay}>
+      style={styles.splashOverlay}
+    >
       {image}
     </Animated.View>
   ) : (
@@ -54,7 +59,8 @@ export function AnimatedSplashOverlay() {
           setAnimate(true);
         });
       }}
-      style={styles.splashOverlay}>
+      style={styles.splashOverlay}
+    >
       {image}
     </View>
   );
@@ -99,13 +105,28 @@ const glowKeyframe = new Keyframe({
 export function AnimatedIcon() {
   return (
     <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
+      <Animated.View
+        entering={glowKeyframe.duration(60 * 1000 * 4)}
+        style={styles.glow}
+      >
+        <Image
+          style={styles.glow}
+          source={require('@/assets/images/logo-glow.png')}
+        />
       </Animated.View>
 
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('../../assets/brand/mark/meyalo-mark-white-192.png')} />
+      <Animated.View
+        entering={keyframe.duration(DURATION)}
+        style={styles.background}
+      />
+      <Animated.View
+        style={styles.imageContainer}
+        entering={logoKeyframe.duration(DURATION)}
+      >
+        <Image
+          style={styles.image}
+          source={require('../../assets/brand/mark/meyalo-mark-white-192.png')}
+        />
       </Animated.View>
     </View>
   );
