@@ -12,7 +12,7 @@ export function ThemeText({
   const colors = useTheme();
 
   const textColor =
-    variant === 'caption'
+    variant === 'caption' || variant === 'captionBold'
       ? colors.textMuted
       : variant === 'link'
         ? colors.textLink
@@ -43,6 +43,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '500',
   },
+  subhead: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '600',
+  },
   body: {
     fontSize: 14,
     lineHeight: 20,
@@ -52,6 +57,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '400',
+  },
+  captionBold: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
   },
   link: {
     fontSize: 14,

@@ -31,6 +31,8 @@ export const Colors = {
     backgroundElement: Palette.white,
     backgroundSelected: Palette.mist,
     elevated: Palette.white,
+    surface: Palette.white,
+    surfaceSecondary: '#F1F5F9',
 
     // Text
     text: Palette.ink,
@@ -59,7 +61,7 @@ export const Colors = {
     categoryForYou: Palette.teal,
     categoryExplore: Palette.ink,
     categoryAroundYou: Palette.tealLight,
-    categorySaved: '#1570EF', // Safe brand blue
+    categorySaved: '#1570EF',
     categoryChanged: Palette.amber,
     categoryCancelled: Palette.critical,
 
@@ -79,6 +81,8 @@ export const Colors = {
     backgroundElement: Palette.inkLight,
     backgroundSelected: '#24373C',
     elevated: Palette.inkLight,
+    surface: Palette.inkLight,
+    surfaceSecondary: '#1E293B',
 
     // Text
     text: Palette.canvas,
