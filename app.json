@@ -9,9 +9,11 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/brand/app-icon/ios-icon-1024.png",
+      "bundleIdentifier": "com.meyalo.app",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.meyalo.app",
       "adaptiveIcon": {
         "backgroundColor": "#087F73",
         "foregroundImage": "./assets/brand/app-icon/adaptive-icon-foreground.png",

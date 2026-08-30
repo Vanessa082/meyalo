@@ -25,36 +25,36 @@ export const Colors = {
     primary: Palette.teal,
     primaryPressed: Palette.tealLight,
     primarySoft: Palette.tealSoft,
-    
+
     // Backgrounds
     background: Palette.canvas,
     backgroundElement: Palette.white,
     backgroundSelected: Palette.mist,
     elevated: Palette.white,
-    
+
     // Text
     text: Palette.ink,
     textSecondary: Palette.teal,
     textMuted: Palette.grayMutedLight,
     textInverse: Palette.white,
     textLink: Palette.teal,
-    
+
     // Borders
     border: Palette.borderLight,
     borderSubtle: '#F2F4F7',
     borderStrong: Palette.teal,
-    
+
     // Actions
     actionPrimary: Palette.teal,
     actionPrimaryPressed: Palette.tealLight,
     actionDisabled: Palette.grayDisabledLight,
-    
+
     // Status
     success: Palette.teal,
     warning: Palette.amber,
     error: Palette.critical,
     info: Palette.teal,
-    
+
     // Event category colors
     categoryForYou: Palette.teal,
     categoryExplore: Palette.ink,
@@ -62,7 +62,7 @@ export const Colors = {
     categorySaved: '#1570EF', // Safe brand blue
     categoryChanged: Palette.amber,
     categoryCancelled: Palette.critical,
-    
+
     // Map markers
     markerPrimary: Palette.teal,
     markerSecondary: Palette.ink,
@@ -73,36 +73,36 @@ export const Colors = {
     primary: Palette.tealLight,
     primaryPressed: Palette.teal,
     primarySoft: Palette.inkLight,
-    
+
     // Backgrounds
     background: Palette.ink,
     backgroundElement: Palette.inkLight,
     backgroundSelected: '#24373C',
     elevated: Palette.inkLight,
-    
+
     // Text
     text: Palette.canvas,
     textSecondary: Palette.mist,
     textMuted: Palette.grayMutedDark,
     textInverse: Palette.ink,
     textLink: Palette.tealLight,
-    
+
     // Borders
     border: Palette.borderDark,
     borderSubtle: '#1F2A2D',
     borderStrong: Palette.tealLight,
-    
+
     // Actions
     actionPrimary: Palette.tealLight,
     actionPrimaryPressed: Palette.teal,
     actionDisabled: Palette.grayDisabledDark,
-    
+
     // Status
     success: Palette.tealLight,
     warning: Palette.amberLight,
     error: Palette.criticalLight,
     info: Palette.tealLight,
-    
+
     // Event category colors
     categoryForYou: Palette.tealLight,
     categoryExplore: Palette.canvas,
@@ -110,7 +110,7 @@ export const Colors = {
     categorySaved: '#53B1FD',
     categoryChanged: Palette.amberLight,
     categoryCancelled: Palette.criticalLight,
-    
+
     // Map markers
     markerPrimary: Palette.tealLight,
     markerSecondary: Palette.canvas,
@@ -118,4 +118,6 @@ export const Colors = {
   },
 } as const;
 
-export type ThemeColors = typeof Colors.light;
+export type ThemeColors = {
+  [K in keyof typeof Colors.light]: string;
+};
