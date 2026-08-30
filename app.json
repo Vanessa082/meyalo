@@ -4,35 +4,40 @@
     "slug": "meyalo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/brand/app-icon/app-icon-1024.png",
     "scheme": "meyalo",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/brand/app-icon/ios-icon-1024.png",
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#087F73",
+        "foregroundImage": "./assets/brand/app-icon/adaptive-icon-foreground.png",
+        "monochromeImage": "./assets/brand/app-icon/monochrome-icon.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/brand/favicon/favicon-32x32.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#F7F9F7",
+          "image": "./assets/brand/mark/meyalo-mark-teal-512.png",
+          "imageWidth": 120,
+          "dark": {
+            "backgroundColor": "#142428",
+            "image": "./assets/brand/mark/meyalo-mark-white-512.png"
+          }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
