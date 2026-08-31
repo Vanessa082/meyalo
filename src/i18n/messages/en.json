@@ -5,5 +5,53 @@
     "aroundYou": "Around You",
     "month": "My Month",
     "you": "You"
+  },
+  "onboarding": {
+    "cityTitle": "Where do you want to discover opportunities?",
+    "citySubtitle": "Meyalo highlights growth events near you and top virtual experiences across Africa.",
+    "interestTitle": "What are you looking to move forward in?",
+    "interestSubtitle": "Select at least 1 growth area to personalize your discovery feed.",
+    "continue": "Continue",
+    "getStarted": "Get Started",
+    "privacyNote": "🔒 Privacy note: No device GPS permissions required."
+  },
+  "forYou": {
+    "subtitle": "Discover growth opportunities tailored for you.",
+    "happeningSoon": "Happening soon",
+    "seeAll": "See all",
+    "loadingNear": "Loading opportunities near you...",
+    "errorFeed": "Unable to load live feed. Pull to refresh."
+  },
+  "explore": {
+    "subtitle": "Discover growth sectors, workshops, and virtual opportunities across Africa."
+  },
+  "aroundYou": {
+    "subtitle": "Explore physical growth events in Yaoundé, Douala, Buea, and surrounding hubs.",
+    "physicalNearby": "Physical Events Nearby"
+  },
+  "month": {
+    "subtitle": "Your personal growth schedule and saved events to show up for.",
+    "scheduleHeader": "September 2026 Schedule",
+    "eventsPlanned": "growth events planned",
+    "upcomingPlanned": "Upcoming Planned Events",
+    "noSavedTitle": "No Saved Events Yet",
+    "noSavedBody": "Explore opportunities in your city or virtual workshops and save them to build your monthly growth plan.",
+    "exploreButton": "Explore Opportunities"
+  },
+  "eventDetail": {
+    "verifiedProvenance": "Verified Event Provenance",
+    "organizedBy": "Organized by",
+    "source": "Source",
+    "timezone": "Timezone",
+    "aboutOpportunity": "About this Opportunity",
+    "registerButton": "Register on Official Site",
+    "disclaimer": "You will be redirected to the original organizer's registration destination.",
+    "defaultAbout": "Join professionals, entrepreneurs, and leaders for this growth-oriented session. Designed to provide actionable insights, networking, and direct skills advancement."
+  },
+  "common": {
+    "refresh": "Refresh",
+    "exploreMap": "Explore map",
+    "updatedAgo": "Updated 1 hour ago",
+    "opportunitiesNear": "opportunities near"
   }
 }

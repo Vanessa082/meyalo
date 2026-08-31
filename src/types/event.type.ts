@@ -109,5 +109,7 @@ export interface EventCardData {
   dateFormatted?: string;
   subtitleCategories?: string;
   verificationText?: string;
+  sourceUrl?: string;
+  description?: string;
   isSaved?: boolean;
 }

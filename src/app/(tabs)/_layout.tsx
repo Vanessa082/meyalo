@@ -36,11 +36,11 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#087F73',
-        tabBarInactiveTintColor: '#94A3B8',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
           backgroundColor: colors.background,
-          borderTopColor: '#E2E8F0',
+          borderTopColor: colors.border,
           height: 64,
           paddingBottom: 8,
           paddingTop: 6,

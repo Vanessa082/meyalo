@@ -4,13 +4,11 @@
  * Wraps the platform-split MapCanvas:
  *   - map-canvas.tsx         → Expo Go / web styled canvas (no native deps)
  *   - map-canvas.native.tsx  → real react-native-maps (dev/prod build only)
- *
- * This file itself NEVER imports react-native-maps directly, keeping the
- * bundler happy in Expo Go while preserving the real-map experience in builds.
  */
 import { Compass, Maximize2, RefreshCw } from 'lucide-react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { Card } from './card';
 import { MapCanvas } from './map-canvas';
 import { ThemeText } from './theme-text';
 
@@ -39,10 +37,12 @@ export function HeroMapCard({
   const colors = useTheme();
 
   return (
-    <View
+    <Card
+      variant="outlined"
+      padding="none"
       style={[
         styles.cardContainer,
-        { backgroundColor: '#E2F1ED', borderColor: colors.border },
+        { backgroundColor: colors.primarySoft, borderColor: colors.border },
       ]}
     >
       {/* ─── Map viewport ─── */}
@@ -52,13 +52,21 @@ export function HeroMapCard({
 
         {/* User location pulse — layered above the map */}
         <View pointerEvents="none" style={styles.userPulseOuter}>
-          <View style={styles.userPulseInner} />
+          <View
+            style={[styles.userPulseInner, { borderColor: colors.surface }]}
+          />
         </View>
 
         {/* Explore map button — always on top */}
-        <Pressable style={styles.exploreButton} onPress={onExploreMap}>
-          <Maximize2 size={13} color="#FFFFFF" />
-          <ThemeText variant="captionBold" style={styles.exploreButtonText}>
+        <Pressable
+          style={[styles.exploreButton, { backgroundColor: colors.text }]}
+          onPress={onExploreMap}
+        >
+          <Maximize2 size={13} color={colors.textInverse} />
+          <ThemeText
+            variant="caption"
+            style={[styles.exploreButtonText, { color: colors.textInverse }]}
+          >
             Explore map
           </ThemeText>
         </Pressable>
@@ -67,14 +75,19 @@ export function HeroMapCard({
       {/* ─── Info bar ─── */}
       <View style={[styles.bottomBar, { backgroundColor: colors.surface }]}>
         <View style={styles.statusInfo}>
-          <View style={[styles.compassIconBg, { backgroundColor: '#F0FDF4' }]}>
-            <Compass size={20} color="#087F73" />
+          <View
+            style={[
+              styles.compassIconBg,
+              { backgroundColor: colors.primarySoft },
+            ]}
+          >
+            <Compass size={20} color={colors.primary} />
           </View>
           <View>
-            <ThemeText variant="subhead" style={styles.oppCountText}>
+            <ThemeText variant="title" style={styles.oppCountText}>
               {opportunityCount} opportunities near {city}
             </ThemeText>
-            <ThemeText variant="caption" style={styles.updatedText}>
+            <ThemeText variant="caption" themeColor="textMuted">
               Updated 1 hour ago
             </ThemeText>
           </View>
@@ -85,29 +98,18 @@ export function HeroMapCard({
           onPress={onRefresh}
         >
           <RefreshCw size={13} color={colors.textSecondary} />
-          <ThemeText
-            variant="captionBold"
-            style={{ color: colors.textSecondary }}
-          >
+          <ThemeText variant="caption" style={{ color: colors.textSecondary }}>
             Refresh
           </ThemeText>
         </Pressable>
       </View>
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   cardContainer: {
-    borderRadius: 20,
-    borderWidth: 1,
-    overflow: 'hidden',
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
   },
   mapArea: {
     height: 170,
@@ -120,7 +122,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: '#0F172A',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -130,7 +131,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   exploreButtonText: {
-    color: '#FFFFFF',
     fontSize: 12,
   },
   userPulseOuter: {
@@ -147,9 +147,8 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#0284C7',
+    backgroundColor: '#087F73',
     borderWidth: 3,
-    borderColor: '#FFFFFF',
   },
   bottomBar: {
     flexDirection: 'row',
@@ -174,11 +173,6 @@ const styles = StyleSheet.create({
   },
   oppCountText: {
     fontSize: 13,
-    fontWeight: '700',
-  },
-  updatedText: {
-    fontSize: 11,
-    opacity: 0.6,
   },
   refreshButton: {
     flexDirection: 'row',

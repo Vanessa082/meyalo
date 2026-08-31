@@ -10,22 +10,37 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemeText } from './theme-text';
 
-interface FilterItem {
+export interface FilterItem {
   id: string;
   label: string;
   icon: React.ComponentType<{ size?: number; color?: string }>;
 }
 
-const CATEGORIES: FilterItem[] = [
+export const CATEGORIES: FilterItem[] = [
   { id: 'all', label: 'All', icon: Grid },
   { id: 'work', label: 'Work & Career', icon: Briefcase },
   { id: 'business', label: 'Business', icon: TrendingUp },
   { id: 'learning', label: 'Learning', icon: BookOpen },
 ];
 
-export function CategoryFilterBar() {
+interface CategoryFilterBarProps {
+  selectedId?: string;
+  onSelectCategory?: (id: string) => void;
+}
+
+export function CategoryFilterBar({
+  selectedId: externalSelectedId,
+  onSelectCategory,
+}: CategoryFilterBarProps) {
   const colors = useTheme();
-  const [selectedId, setSelectedId] = useState('all');
+  const [internalSelectedId, setInternalSelectedId] = useState('all');
+
+  const selectedId = externalSelectedId ?? internalSelectedId;
+
+  const handleSelect = (id: string) => {
+    setInternalSelectedId(id);
+    onSelectCategory?.(id);
+  };
 
   return (
     <View style={styles.wrapper}>
@@ -41,11 +56,11 @@ export function CategoryFilterBar() {
           return (
             <Pressable
               key={cat.id}
-              onPress={() => setSelectedId(cat.id)}
+              onPress={() => handleSelect(cat.id)}
               style={[
                 styles.chip,
                 isSelected
-                  ? { backgroundColor: '#087F73' }
+                  ? { backgroundColor: colors.primary }
                   : {
                       backgroundColor: colors.surface,
                       borderColor: colors.border,
@@ -55,13 +70,17 @@ export function CategoryFilterBar() {
             >
               <IconComponent
                 size={14}
-                color={isSelected ? '#FFFFFF' : colors.textSecondary}
+                color={isSelected ? colors.textInverse : colors.textSecondary}
               />
               <ThemeText
                 variant="captionBold"
                 style={[
                   styles.chipText,
-                  { color: isSelected ? '#FFFFFF' : colors.textSecondary },
+                  {
+                    color: isSelected
+                      ? colors.textInverse
+                      : colors.textSecondary,
+                  },
                 ]}
               >
                 {cat.label}
@@ -70,7 +89,6 @@ export function CategoryFilterBar() {
           );
         })}
 
-        {/* Filter settings button icon */}
         <Pressable
           style={[
             styles.filterIconButton,
@@ -86,7 +104,7 @@ export function CategoryFilterBar() {
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   scrollContent: {
     gap: 8,
