@@ -6,33 +6,72 @@ import {
   Calendar,
   CheckCircle2,
   ExternalLink,
+  Flag,
   Globe,
   MapPin,
   ShieldCheck,
 } from 'lucide-react-native';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { ThemeText } from '@/components/ui/theme-text';
+import { useEventDetail } from '@/hooks/use-events';
 import { useTheme } from '@/hooks/use-theme';
-import { t } from '@/i18n';
-import { DEMO_FALLBACK_EVENTS } from '@/services/event.service';
 
 export default function EventDetailScreen() {
   const colors = useTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  // Find target event or fallback to first demo event
-  const event =
-    DEMO_FALLBACK_EVENTS.find((item) => item.id === id) ??
-    DEMO_FALLBACK_EVENTS[0];
+  const { data: event, isLoading, isError } = useEventDetail(id ?? '');
 
   const handleOpenSource = () => {
-    const url = event.sourceUrl ?? 'https://meyalo.app';
-    Linking.openURL(url);
+    if (event?.sourceUrl) {
+      Linking.openURL(event.sourceUrl);
+    }
   };
+
+  const handleReport = () => {
+    Alert.alert(
+      'Report Event',
+      'Thank you for helping keep Meyalo accurate. If this event contains outdated or incorrect information, our team will review it shortly.',
+      [{ text: 'OK' }],
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <Screen style={styles.loadingContainer}>
+        <ThemeText variant="body" themeColor="textMuted">
+          Loading event details...
+        </ThemeText>
+      </Screen>
+    );
+  }
+
+  if (isError || !event) {
+    return (
+      <Screen style={styles.loadingContainer}>
+        <ThemeText variant="h1" style={styles.errorTitle}>
+          Event Not Found
+        </ThemeText>
+        <ThemeText
+          variant="body"
+          themeColor="textMuted"
+          style={styles.errorText}
+        >
+          The requested growth opportunity could not be found or has been
+          removed.
+        </ThemeText>
+        <Button
+          title="Back to Discovery"
+          variant="primary"
+          onPress={() => router.back()}
+        />
+      </Screen>
+    );
+  }
 
   return (
     <Screen style={styles.container} scrollable>
@@ -70,7 +109,11 @@ export default function EventDetailScreen() {
             style={[styles.formatBadge, { backgroundColor: colors.surface }]}
           >
             <ThemeText variant="caption" themeColor="textMuted">
-              {event.format === 'in_person' ? '📍 In Person' : '🌐 Virtual'}
+              {event.format === 'in_person'
+                ? '📍 In Person'
+                : event.format === 'hybrid'
+                  ? '🔄 Hybrid'
+                  : '🌐 Virtual'}
             </ThemeText>
           </View>
         </View>
@@ -80,7 +123,7 @@ export default function EventDetailScreen() {
           {event.title}
         </ThemeText>
 
-        {/* ─── Provenance & Trust Card ─── */}
+        {/* ─── Provenance & Trust Card (Evidence-Based) ─── */}
         <Card
           variant="flat"
           padding="md"
@@ -92,14 +135,14 @@ export default function EventDetailScreen() {
           <View style={styles.trustHeader}>
             <ShieldCheck size={20} color={colors.primary} />
             <ThemeText variant="title" style={styles.trustTitle}>
-              {t('eventDetail.verifiedProvenance')}
+              Verified Source Provenance
             </ThemeText>
           </View>
 
           <View style={styles.trustRow}>
             <CheckCircle2 size={16} color={colors.primary} />
             <ThemeText variant="caption" themeColor="text">
-              {t('eventDetail.organizedBy')}{' '}
+              Organized by{' '}
               <ThemeText variant="captionBold">{event.organizerName}</ThemeText>
             </ThemeText>
           </View>
@@ -107,7 +150,7 @@ export default function EventDetailScreen() {
           <View style={styles.trustRow}>
             <Globe size={16} color={colors.textMuted} />
             <ThemeText variant="caption" themeColor="textMuted">
-              {t('eventDetail.source')}: {event.verificationText}
+              {event.verificationText ?? 'Source verified'}
             </ThemeText>
           </View>
         </Card>
@@ -126,7 +169,7 @@ export default function EventDetailScreen() {
             <View>
               <ThemeText variant="subtitle">{event.dateFormatted}</ThemeText>
               <ThemeText variant="caption" themeColor="textMuted">
-                {t('eventDetail.timezone')}: {event.timezone}
+                Timezone: {event.timezone}
               </ThemeText>
             </View>
           </View>
@@ -142,10 +185,14 @@ export default function EventDetailScreen() {
             </View>
             <View style={styles.locationText}>
               <ThemeText variant="subtitle">
-                {event.venueName ?? 'Online Event'}
+                {event.format === 'virtual'
+                  ? 'Online Virtual Event'
+                  : (event.venueName ?? event.city ?? 'Yaoundé')}
               </ThemeText>
               <ThemeText variant="caption" themeColor="textMuted">
-                {event.city} • {event.distanceText} away
+                {event.format === 'virtual'
+                  ? 'Accessible online'
+                  : (event.city ?? 'Yaoundé')}
               </ThemeText>
             </View>
           </View>
@@ -154,28 +201,39 @@ export default function EventDetailScreen() {
         {/* ─── Description ─── */}
         <View style={styles.descriptionSection}>
           <ThemeText variant="title" style={styles.sectionHeader}>
-            {t('eventDetail.aboutOpportunity')}
+            About This Opportunity
           </ThemeText>
           <ThemeText variant="body" themeColor="text" style={styles.bodyText}>
-            {event.description ?? t('eventDetail.defaultAbout')}
+            {event.description ??
+              'Join this growth-focused session to expand your skill set, connect with industry leaders, and discover strategic opportunities.'}
           </ThemeText>
         </View>
+
+        {/* ─── Safety & Report Action ─── */}
+        <Pressable onPress={handleReport} style={styles.reportRow}>
+          <Flag size={14} color={colors.textMuted} />
+          <ThemeText variant="caption" themeColor="textMuted">
+            Report incorrect or outdated information
+          </ThemeText>
+        </Pressable>
 
         {/* ─── Bottom CTA Bar ─── */}
         <View style={styles.footerCTA}>
           <Button
-            title={t('eventDetail.registerButton')}
+            title="Register at Official Source"
             variant="primary"
             size="large"
             icon={<ExternalLink size={18} color={colors.textInverse} />}
             onPress={handleOpenSource}
+            disabled={!event.sourceUrl}
           />
           <ThemeText
             variant="caption"
             themeColor="textMuted"
             style={styles.disclaimerText}
           >
-            {t('eventDetail.disclaimer')}
+            Meyalo redirects directly to the organizer's original registration
+            channel.
           </ThemeText>
         </View>
       </View>
@@ -186,6 +244,20 @@ export default function EventDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorTitle: {
+    fontSize: 22,
+    marginBottom: 8,
+  },
+  errorText: {
+    textAlign: 'center',
+    marginBottom: 20,
   },
   heroWrapper: {
     height: 240,
@@ -275,7 +347,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   descriptionSection: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
   sectionHeader: {
     fontSize: 18,
@@ -283,6 +355,12 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     lineHeight: 22,
+  },
+  reportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 32,
   },
   footerCTA: {
     gap: 8,

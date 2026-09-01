@@ -57,17 +57,16 @@ export default function InterestOnboardingScreen() {
     );
   };
 
-  const handleFinish = async () => {
+  const handleNext = async () => {
     try {
       await AsyncStorage.setItem(
         'user_interests',
         JSON.stringify(selectedInterests),
       );
-      await AsyncStorage.setItem('has_completed_onboarding', 'true');
     } catch {
       // Ignore async storage error in fallback
     }
-    router.replace('/(tabs)');
+    router.push('/(onboarding)/goal');
   };
 
   return (
@@ -80,14 +79,14 @@ export default function InterestOnboardingScreen() {
           <Sparkles size={24} color={colors.primary} />
         </View>
         <ThemeText variant="h1" style={styles.title}>
-          What are you looking to move forward in?
+          What topics matter to you?
         </ThemeText>
         <ThemeText
           variant="body"
           themeColor="textMuted"
           style={styles.subtitle}
         >
-          Select at least 1 growth area to personalize your discovery feed.
+          Select at least 1 growth area to personalize your discovery radar.
         </ThemeText>
       </View>
 
@@ -148,11 +147,11 @@ export default function InterestOnboardingScreen() {
       {/* ─── Footer ─── */}
       <View style={styles.footer}>
         <Button
-          title="Get Started"
+          title="Continue to Goals"
           variant="primary"
           size="large"
           disabled={selectedInterests.length === 0}
-          onPress={handleFinish}
+          onPress={handleNext}
         />
       </View>
     </Screen>

@@ -1,23 +1,19 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { EventCard } from '@/components/ui/event-card';
 import { HeroMapCard } from '@/components/ui/hero-map-card';
 import { Screen } from '@/components/ui/screen';
 import { ThemeText } from '@/components/ui/theme-text';
+import { useForYouEvents } from '@/hooks/use-events';
 import { t } from '@/i18n';
-import { EventService } from '@/services/event.service';
-import type { EventCardData } from '@/types/event.type';
 
 export default function AroundYouScreen() {
   const router = useRouter();
-  const [events, setEvents] = useState<EventCardData[]>([]);
+  const { data: events = [], isLoading } = useForYouEvents();
 
-  useEffect(() => {
-    EventService.fetchForYouEvents().then(setEvents);
-  }, []);
-
-  const physicalEvents = events.filter((e) => e.format === 'in_person');
+  const physicalEvents = events.filter(
+    (e) => e.format === 'in_person' || e.format === 'hybrid',
+  );
 
   return (
     <Screen style={styles.container} scrollable>
@@ -43,13 +39,17 @@ export default function AroundYouScreen() {
       </View>
 
       <View style={styles.eventList}>
-        {physicalEvents.map((event) => (
-          <EventCard
-            key={event.id}
-            event={event}
-            onPress={() => router.push(`/event/${event.id}` as never)}
-          />
-        ))}
+        {isLoading ? (
+          <ThemeText variant="caption">Loading nearby events...</ThemeText>
+        ) : (
+          physicalEvents.map((event) => (
+            <EventCard
+              key={event.id}
+              event={event}
+              onPress={() => router.push(`/event/${event.id}` as never)}
+            />
+          ))
+        )}
       </View>
     </Screen>
   );

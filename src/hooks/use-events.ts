@@ -8,3 +8,11 @@ export function useForYouEvents() {
     queryFn: () => EventService.fetchForYouEvents(),
   });
 }
+
+export function useEventDetail(id: string) {
+  return useQuery<EventCardData | null>({
+    queryKey: ['events', 'detail', id],
+    queryFn: () => EventService.fetchEventById(id),
+    enabled: Boolean(id),
+  });
+}

@@ -48,7 +48,8 @@
     "web": "expo start --web",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test-event-mapper.mjs"
   },
   "private": true
 }

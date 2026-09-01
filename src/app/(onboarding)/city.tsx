@@ -1,15 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { MapPin, Navigation } from 'lucide-react-native';
+import {
+  Building2,
+  Globe,
+  Layers,
+  MapPin,
+  Navigation,
+} from 'lucide-react-native';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { ThemeText } from '@/components/ui/theme-text';
 import { useTheme } from '@/hooks/use-theme';
 
-const CITIES = [
+const PHYSICAL_CITIES = [
   {
     id: 'yaounde',
     name: 'Yaoundé',
@@ -30,21 +36,24 @@ const CITIES = [
     name: 'Bamenda',
     subtitle: 'Education, Agriculture & Community Hub',
   },
-  {
-    id: 'virtual',
-    name: 'Virtual / Anywhere',
-    subtitle: 'Online Conferences, Masterclasses & Webinars',
-  },
+];
+
+const FORMAT_OPTIONS = [
+  { id: 'both', label: 'Both Physical & Virtual', icon: Layers },
+  { id: 'physical', label: 'Physical Only', icon: Building2 },
+  { id: 'virtual', label: 'Virtual Only', icon: Globe },
 ];
 
 export default function CityOnboardingScreen() {
   const colors = useTheme();
   const router = useRouter();
   const [selectedCity, setSelectedCity] = useState<string>('yaounde');
+  const [selectedFormat, setSelectedFormat] = useState<string>('both');
 
   const handleContinue = async () => {
     try {
       await AsyncStorage.setItem('user_city', selectedCity);
+      await AsyncStorage.setItem('user_format_preference', selectedFormat);
     } catch {
       // Ignore async storage error in fallback
     }
@@ -61,21 +70,21 @@ export default function CityOnboardingScreen() {
           <MapPin size={24} color={colors.primary} />
         </View>
         <ThemeText variant="h1" style={styles.title}>
-          Where do you want to discover opportunities?
+          Select your primary discovery city
         </ThemeText>
         <ThemeText
           variant="body"
           themeColor="textMuted"
           style={styles.subtitle}
         >
-          Meyalo highlights growth events near you and top virtual experiences
-          across Africa.
+          Choose your city for physical growth events. You can also customize
+          your event format preferences below.
         </ThemeText>
       </View>
 
       {/* ─── City Selection List ─── */}
       <View style={styles.cityList}>
-        {CITIES.map((city) => {
+        {PHYSICAL_CITIES.map((city) => {
           const isSelected = selectedCity === city.id;
           return (
             <Card
@@ -118,6 +127,48 @@ export default function CityOnboardingScreen() {
         })}
       </View>
 
+      {/* ─── Format Preference Selector ─── */}
+      <View style={styles.formatSection}>
+        <ThemeText variant="subtitle" style={styles.formatTitle}>
+          Event Format Preference
+        </ThemeText>
+        <View style={styles.formatChips}>
+          {FORMAT_OPTIONS.map((opt) => {
+            const isSelected = selectedFormat === opt.id;
+            const Icon = opt.icon;
+            return (
+              <Pressable
+                key={opt.id}
+                onPress={() => setSelectedFormat(opt.id)}
+                style={[
+                  styles.formatChip,
+                  {
+                    borderColor: isSelected ? colors.primary : colors.border,
+                    backgroundColor: isSelected
+                      ? colors.primarySoft
+                      : colors.surface,
+                  },
+                ]}
+              >
+                <Icon
+                  size={14}
+                  color={isSelected ? colors.primary : colors.textMuted}
+                />
+                <ThemeText
+                  variant="caption"
+                  style={{
+                    color: isSelected ? colors.primary : colors.text,
+                    fontWeight: isSelected ? '600' : '400',
+                  }}
+                >
+                  {opt.label}
+                </ThemeText>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       {/* ─── Bottom CTA ─── */}
       <View style={styles.footer}>
         <Button
@@ -145,7 +196,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   iconCircle: {
     width: 48,
@@ -156,15 +207,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     marginBottom: 8,
   },
   subtitle: {
-    lineHeight: 22,
+    lineHeight: 20,
   },
   cityList: {
-    gap: 12,
-    marginBottom: 24,
+    gap: 10,
+    marginBottom: 20,
   },
   cityCard: {
     borderWidth: 1.5,
@@ -189,9 +240,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  formatSection: {
+    marginBottom: 24,
+  },
+  formatTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  formatChips: {
+    gap: 8,
+  },
+  formatChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
   footer: {
     gap: 12,
-    marginTop: 8,
+    marginTop: 4,
   },
   privacyNote: {
     textAlign: 'center',

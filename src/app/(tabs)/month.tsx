@@ -4,32 +4,25 @@ import {
   Calendar as CalendarIcon,
   Sparkles,
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EventCard } from '@/components/ui/event-card';
 import { Screen } from '@/components/ui/screen';
 import { ThemeText } from '@/components/ui/theme-text';
+import { useForYouEvents } from '@/hooks/use-events';
+import { useSavedEventIds } from '@/hooks/use-saved-events';
 import { useTheme } from '@/hooks/use-theme';
 import { t } from '@/i18n';
-import { DEMO_FALLBACK_EVENTS, EventService } from '@/services/event.service';
-import type { EventCardData } from '@/types/event.type';
 
 export default function MonthScreen() {
   const colors = useTheme();
   const router = useRouter();
-  const [savedEvents, setSavedEvents] = useState<EventCardData[]>([]);
+  const { data: events = [], isLoading } = useForYouEvents();
+  const { data: savedIds = [] } = useSavedEventIds();
 
-  useEffect(() => {
-    EventService.fetchForYouEvents().then((events) => {
-      if (events.length > 0) {
-        setSavedEvents(events.slice(0, 2));
-      } else {
-        setSavedEvents(DEMO_FALLBACK_EVENTS.slice(0, 2));
-      }
-    });
-  }, []);
+  // Filter events whose IDs are saved in AsyncStorage
+  const savedEvents = events.filter((e) => savedIds.includes(e.id));
 
   return (
     <Screen style={styles.container} scrollable>
@@ -68,7 +61,11 @@ export default function MonthScreen() {
       </Card>
 
       {/* ─── Saved Events Agenda ─── */}
-      {savedEvents.length > 0 ? (
+      {isLoading ? (
+        <ThemeText variant="caption">
+          Loading your saved month plan...
+        </ThemeText>
+      ) : savedEvents.length > 0 ? (
         <View style={styles.eventList}>
           <ThemeText variant="title" style={styles.sectionTitle}>
             {t('month.upcomingPlanned')}
@@ -76,7 +73,7 @@ export default function MonthScreen() {
           {savedEvents.map((event) => (
             <EventCard
               key={event.id}
-              event={{ ...event, isSaved: true }}
+              event={event}
               onPress={() => router.push(`/event/${event.id}` as never)}
             />
           ))}

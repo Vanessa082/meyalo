@@ -1,12 +1,14 @@
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import {
   Bookmark,
   CheckCircle2,
   Footprints,
+  Globe,
   MapPin,
 } from 'lucide-react-native';
-import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSavedEventIds, useToggleSaveEvent } from '@/hooks/use-saved-events';
 import { useTheme } from '@/hooks/use-theme';
 import type { EventCardData } from '@/types/event.type';
 import { Card } from './card';
@@ -19,14 +21,32 @@ interface EventCardProps {
 
 export function EventCard({ event, onPress }: EventCardProps) {
   const colors = useTheme();
-  const [isSaved, setIsSaved] = useState(event.isSaved ?? false);
+  const router = useRouter();
+  const { data: savedIds = [] } = useSavedEventIds();
+  const toggleSaveMutation = useToggleSaveEvent();
 
-  const toggleSave = () => {
-    setIsSaved(!isSaved);
+  const isSaved = savedIds.includes(event.id);
+
+  const toggleSave = (e: { stopPropagation?: () => void }) => {
+    e.stopPropagation?.();
+    toggleSaveMutation.mutate(event.id);
+  };
+
+  const handleCardPress = () => {
+    if (onPress) {
+      onPress();
+    } else if (event.id) {
+      router.push(`/event/${event.id}`);
+    }
   };
 
   return (
-    <Card variant="outlined" padding="sm" onPress={onPress} style={styles.card}>
+    <Card
+      variant="outlined"
+      padding="sm"
+      onPress={handleCardPress}
+      style={styles.card}
+    >
       <View style={styles.cardContent}>
         {/* Left Image Thumbnail with Date Badge Overlay */}
         <View style={styles.imageContainer}>
@@ -52,6 +72,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
                 styles.dateBadge,
                 {
                   backgroundColor:
+                    event.dateBadgeText === 'TODAY' ||
                     event.dateBadgeText === 'TOMORROW'
                       ? colors.warning
                       : colors.text,
@@ -91,30 +112,38 @@ export function EventCard({ event, onPress }: EventCardProps) {
           </ThemeText>
 
           {/* Subtitle / Categories */}
-          {event.subtitleCategories && (
+          {event.primaryCategory && (
             <ThemeText
               variant="caption"
               numberOfLines={1}
               themeColor="textMuted"
               style={styles.subtitle}
             >
-              {event.subtitleCategories}
+              {event.primaryCategory}
             </ThemeText>
           )}
 
-          {/* Location */}
+          {/* Location / Format */}
           <View style={styles.locationRow}>
-            <MapPin size={13} color={colors.textMuted} strokeWidth={2} />
+            {event.format === 'virtual' ? (
+              <Globe size={13} color={colors.textMuted} strokeWidth={2} />
+            ) : (
+              <MapPin size={13} color={colors.textMuted} strokeWidth={2} />
+            )}
             <ThemeText
               variant="caption"
               numberOfLines={1}
               themeColor="textMuted"
             >
-              {event.venueName ?? event.city ?? 'Yaoundé'}
+              {event.format === 'virtual'
+                ? 'Online (Virtual)'
+                : event.venueName
+                  ? `${event.venueName}, ${event.city}`
+                  : (event.city ?? 'Yaoundé')}
             </ThemeText>
           </View>
 
-          {/* Metadata Chips: Distance | Price | Type */}
+          {/* Metadata Chips: Price | Format | Category */}
           <View style={styles.chipsRow}>
             {event.distanceText && (
               <View
@@ -149,7 +178,11 @@ export function EventCard({ event, onPress }: EventCardProps) {
               ]}
             >
               <ThemeText variant="caption" themeColor="textMuted">
-                {event.eventType}
+                {event.format === 'virtual'
+                  ? 'Virtual'
+                  : event.format === 'hybrid'
+                    ? 'Hybrid'
+                    : 'In-Person'}
               </ThemeText>
             </View>
           </View>
@@ -158,8 +191,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
           <View style={styles.trustRow}>
             <CheckCircle2 size={13} color={colors.success} strokeWidth={2} />
             <ThemeText variant="caption" themeColor="success">
-              {event.verificationText ??
-                'Verified from organizer • Checked today'}
+              {event.verificationText ?? 'Official source · Checked today'}
             </ThemeText>
           </View>
         </View>
