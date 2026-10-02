@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  buildPriceLabel,
   buildTrustLabel,
+  buildVerificationText,
+  coverImageUrl,
   mapFormat,
-  sourceWasConfirmed,
+  publicLinkLabel,
+  verificationState,
 } from './event-mapping.ts';
 
 describe('mapFormat', () => {
@@ -15,38 +19,120 @@ describe('mapFormat', () => {
   });
 });
 
-describe('sourceWasConfirmed', () => {
-  it('follows verification_state and does not treat unreviewed as confirmed', () => {
+describe('verificationState', () => {
+  it('uses only verification_state and ignores a leftover is_verified flag', () => {
     assert.equal(
-      sourceWasConfirmed({ verification_state: 'source_confirmed' }),
-      true,
+      verificationState({ verification_state: 'source_confirmed' }),
+      'source_confirmed',
     );
     assert.equal(
-      sourceWasConfirmed({ verification_state: 'organizer_confirmed' }),
-      true,
+      verificationState({ verification_state: 'organizer_confirmed' }),
+      'organizer_confirmed',
     );
     assert.equal(
-      sourceWasConfirmed({
+      verificationState({
         verification_state: 'unreviewed',
         is_verified: true,
       }),
-      false,
+      'unreviewed',
     );
-    assert.equal(sourceWasConfirmed({ is_verified: true }), true);
-    assert.equal(sourceWasConfirmed({}), false);
+    assert.equal(verificationState({ is_verified: true }), 'unreviewed');
+    assert.equal(verificationState({}), 'unreviewed');
   });
 });
 
 describe('buildTrustLabel', () => {
-  it('does not claim verification without a source', () => {
+  it('names the verification state and does not say verified', () => {
+    assert.equal(buildTrustLabel('source_confirmed'), 'Source confirmed');
     assert.equal(
-      buildTrustLabel(true, 'https://example.com'),
-      'Official source',
+      buildTrustLabel('organizer_confirmed'),
+      'Confirmed by organizer',
+    );
+    assert.equal(buildTrustLabel('unreviewed'), 'Not reviewed');
+  });
+});
+
+describe('buildVerificationText', () => {
+  it('shows the check date for a recent confirmation and a warning when stale', () => {
+    const now = new Date('2026-10-02T12:00:00.000Z');
+    assert.equal(
+      buildVerificationText(
+        'source_confirmed',
+        '2026-09-28T00:00:00.000Z',
+        now,
+      ),
+      'Source confirmed · Checked 28 Sep 2026',
     );
     assert.equal(
-      buildTrustLabel(false, 'https://example.com'),
-      'Source available',
+      buildVerificationText(
+        'source_confirmed',
+        '2026-08-01T00:00:00.000Z',
+        now,
+      ),
+      'Details may have changed — confirm at source',
     );
-    assert.equal(buildTrustLabel(false, null), 'Community-submitted');
+    assert.equal(
+      buildVerificationText('unreviewed', '2026-10-01T00:00:00.000Z', now),
+      'Not reviewed',
+    );
+  });
+});
+
+describe('buildPriceLabel', () => {
+  it('keeps an explicit free price and does not invent one', () => {
+    assert.equal(buildPriceLabel({ price_type: 'free' }), 'Free');
+    assert.equal(
+      buildPriceLabel({ price_type: 'unknown' }),
+      'Price not stated',
+    );
+    assert.equal(buildPriceLabel({}), 'Price not stated');
+    assert.equal(
+      buildPriceLabel({
+        price_type: 'paid',
+        price_min: 20000,
+        currency: 'XAF',
+      }),
+      'From 20 000 FCFA',
+    );
+    assert.equal(
+      buildPriceLabel({
+        price_type: 'paid',
+        price_min: 20000,
+        price_max: 20000,
+        currency: 'XAF',
+      }),
+      '20 000 FCFA',
+    );
+  });
+});
+
+describe('coverImageUrl', () => {
+  it('uses only an https image on the event row', () => {
+    assert.equal(
+      coverImageUrl({ cover_image_url: 'https://cdn.example/event.jpg' }),
+      'https://cdn.example/event.jpg',
+    );
+    assert.equal(coverImageUrl({}), undefined);
+    assert.equal(
+      coverImageUrl({ cover_image_url: 'http://cdn.example/event.jpg' }),
+      undefined,
+    );
+  });
+});
+
+describe('publicLinkLabel', () => {
+  it('names the registration host or the source host', () => {
+    assert.deepEqual(
+      publicLinkLabel({
+        registrationUrl: 'https://ccima.cm/register',
+        sourceUrl: 'https://ccima.cm/event',
+      }),
+      { title: 'Register on ccima.cm', url: 'https://ccima.cm/register' },
+    );
+    assert.deepEqual(publicLinkLabel({ sourceUrl: 'https://ccima.cm/event' }), {
+      title: 'View details on ccima.cm',
+      url: 'https://ccima.cm/event',
+    });
+    assert.deepEqual(publicLinkLabel({}), { title: 'No link stated' });
   });
 });

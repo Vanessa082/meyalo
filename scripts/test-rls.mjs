@@ -75,6 +75,7 @@ async function main() {
       organizer_name: 'RLS Fixture',
       organizer_id: organizer.data.id,
       source_url: `https://example.com/rls-published-${stamp}`,
+      source_type: 'organizer_site',
       publication_status: 'published',
       verification_state: 'source_confirmed',
     })
@@ -95,6 +96,7 @@ async function main() {
       organizer_name: 'RLS Fixture',
       organizer_id: organizer.data.id,
       source_url: `https://example.com/rls-draft-${stamp}`,
+      source_type: 'organizer_site',
       publication_status: 'draft',
       verification_state: 'unreviewed',
     })
@@ -111,6 +113,7 @@ async function main() {
     organizer_name: 'RLS Fixture',
     organizer_id: organizer.data.id,
     source_url: `https://example.com/rls-illegal-${stamp}`,
+    source_type: 'organizer_site',
     publication_status: 'published',
     verification_state: 'unreviewed',
   });

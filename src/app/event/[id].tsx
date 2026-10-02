@@ -18,6 +18,7 @@ import { Screen } from '@/components/ui/screen';
 import { ThemeText } from '@/components/ui/theme-text';
 import { useEventDetail } from '@/hooks/use-events';
 import { useTheme } from '@/hooks/use-theme';
+import { publicLinkLabel } from '@/services/event-mapping';
 
 export default function EventDetailScreen() {
   const colors = useTheme();
@@ -26,9 +27,14 @@ export default function EventDetailScreen() {
 
   const { data: event, isLoading, isError } = useEventDetail(id ?? '');
 
+  const link = event ? publicLinkLabel(event) : { title: 'No link stated' };
+  const provenanceConfirmed =
+    event?.verificationState === 'source_confirmed' ||
+    event?.verificationState === 'organizer_confirmed';
+
   const handleOpenSource = () => {
-    if (event?.sourceUrl) {
-      Linking.openURL(event.sourceUrl);
+    if (link.url) {
+      Linking.openURL(link.url);
     }
   };
 
@@ -77,11 +83,30 @@ export default function EventDetailScreen() {
     <Screen style={styles.container} scrollable>
       {/* ─── Hero Image & Floating Back Button ─── */}
       <View style={styles.heroWrapper}>
-        <Image
-          source={{ uri: event.coverImageUrl }}
-          style={styles.heroImage}
-          contentFit="cover"
-        />
+        {event.coverImageUrl ? (
+          <Image
+            source={{ uri: event.coverImageUrl }}
+            style={styles.heroImage}
+            contentFit="cover"
+          />
+        ) : (
+          <View
+            style={[
+              styles.heroImage,
+              styles.heroPlaceholder,
+              { backgroundColor: colors.surfaceSecondary },
+            ]}
+          >
+            <ThemeText variant="title" themeColor="textMuted">
+              {event.eventType}
+            </ThemeText>
+            {event.dateBadgeText ? (
+              <ThemeText variant="caption" themeColor="textMuted">
+                {event.dateBadgeText}
+              </ThemeText>
+            ) : null}
+          </View>
+        )}
         <Pressable
           style={[styles.backButton, { backgroundColor: colors.surface }]}
           onPress={() => router.back()}
@@ -133,26 +158,33 @@ export default function EventDetailScreen() {
           ]}
         >
           <View style={styles.trustHeader}>
-            <ShieldCheck size={20} color={colors.primary} />
+            {provenanceConfirmed ? (
+              <ShieldCheck size={20} color={colors.primary} />
+            ) : null}
             <ThemeText variant="title" style={styles.trustTitle}>
-              Verified Source Provenance
+              {event.trustLabel ?? 'Not reviewed'}
             </ThemeText>
           </View>
 
           <View style={styles.trustRow}>
-            <CheckCircle2 size={16} color={colors.primary} />
             <ThemeText variant="caption" themeColor="text">
               Organized by{' '}
               <ThemeText variant="captionBold">{event.organizerName}</ThemeText>
             </ThemeText>
           </View>
 
-          <View style={styles.trustRow}>
-            <Globe size={16} color={colors.textMuted} />
-            <ThemeText variant="caption" themeColor="textMuted">
-              {event.verificationText ?? 'Source verified'}
-            </ThemeText>
-          </View>
+          {event.verificationText ? (
+            <View style={styles.trustRow}>
+              {provenanceConfirmed ? (
+                <CheckCircle2 size={16} color={colors.primary} />
+              ) : (
+                <Globe size={16} color={colors.textMuted} />
+              )}
+              <ThemeText variant="caption" themeColor="textMuted">
+                {event.verificationText}
+              </ThemeText>
+            </View>
+          ) : null}
         </Card>
 
         {/* ─── Key Metadata ─── */}
@@ -169,7 +201,9 @@ export default function EventDetailScreen() {
             <View>
               <ThemeText variant="subtitle">{event.dateFormatted}</ThemeText>
               <ThemeText variant="caption" themeColor="textMuted">
-                Timezone: {event.timezone}
+                {event.timezone
+                  ? `Timezone: ${event.timezone}`
+                  : 'Timezone not stated'}
               </ThemeText>
             </View>
           </View>
@@ -186,13 +220,13 @@ export default function EventDetailScreen() {
             <View style={styles.locationText}>
               <ThemeText variant="subtitle">
                 {event.format === 'virtual'
-                  ? 'Online Virtual Event'
-                  : (event.venueName ?? event.city ?? 'Yaoundé')}
+                  ? 'Online'
+                  : (event.venueName ?? event.city ?? 'Venue to be confirmed')}
               </ThemeText>
               <ThemeText variant="caption" themeColor="textMuted">
                 {event.format === 'virtual'
-                  ? 'Accessible online'
-                  : (event.city ?? 'Yaoundé')}
+                  ? 'Online'
+                  : (event.city ?? 'Venue to be confirmed')}
               </ThemeText>
             </View>
           </View>
@@ -204,8 +238,9 @@ export default function EventDetailScreen() {
             About This Opportunity
           </ThemeText>
           <ThemeText variant="body" themeColor="text" style={styles.bodyText}>
-            {event.description ??
-              'Join this growth-focused session to expand your skill set, connect with industry leaders, and discover strategic opportunities.'}
+            {event.description?.trim()
+              ? event.description
+              : 'Description not stated'}
           </ThemeText>
         </View>
 
@@ -220,21 +255,24 @@ export default function EventDetailScreen() {
         {/* ─── Bottom CTA Bar ─── */}
         <View style={styles.footerCTA}>
           <Button
-            title="Register at Official Source"
+            title={link.title}
             variant="primary"
             size="large"
             icon={<ExternalLink size={18} color={colors.textInverse} />}
             onPress={handleOpenSource}
-            disabled={!event.sourceUrl}
+            disabled={!link.url}
           />
-          <ThemeText
-            variant="caption"
-            themeColor="textMuted"
-            style={styles.disclaimerText}
-          >
-            Meyalo redirects directly to the organizer's original registration
-            channel.
-          </ThemeText>
+          {link.url ? (
+            <ThemeText
+              variant="caption"
+              themeColor="textMuted"
+              style={styles.disclaimerText}
+            >
+              {event.registrationUrl
+                ? 'Opens the registration page.'
+                : 'Opens the event source.'}
+            </ThemeText>
+          ) : null}
         </View>
       </View>
     </Screen>
@@ -267,6 +305,12 @@ const styles = StyleSheet.create({
   heroImage: {
     width: '100%',
     height: '100%',
+  },
+  heroPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 24,
   },
   backButton: {
     position: 'absolute',

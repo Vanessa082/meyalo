@@ -70,20 +70,21 @@ SET publication_status = CASE status::text
 END
 WHERE publication_status IS NULL;
 
--- Verification: is_verified is not the model. true meant a source had been
--- checked, which is source_confirmed. false becomes unreviewed, and an
--- unreviewed row cannot stay published.
+-- The old is_verified boolean is not a curator check. Do not promote it to
+-- source_confirmed. Historical rows stay unreviewed, and unreviewed rows
+-- cannot stay published.
 UPDATE public.events
-SET verification_state = CASE
-  WHEN is_verified IS TRUE THEN 'source_confirmed'::public.verification_state
-  ELSE 'unreviewed'::public.verification_state
-END
+SET verification_state = 'unreviewed'
 WHERE verification_state IS NULL;
 
 UPDATE public.events
 SET publication_status = 'draft'
 WHERE verification_state = 'unreviewed'
   AND publication_status = 'published';
+
+-- The original check only allows physical/virtual/hybrid. Drop it before
+-- rewriting physical rows, or that update is rejected.
+ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_format_check;
 
 UPDATE public.events
 SET
@@ -96,6 +97,8 @@ SET updated_at = COALESCE(updated_at, created_at, now())
 WHERE updated_at IS NULL;
 
 -- 'Virtual' was a placeholder city because city used to be required.
+ALTER TABLE public.events ALTER COLUMN city DROP NOT NULL;
+
 UPDATE public.events
 SET city = NULL
 WHERE city = 'Virtual';
@@ -105,14 +108,35 @@ SET country_code = 'CM'
 WHERE country_code IS NULL
   AND city IS NOT NULL;
 
--- Existing fixture rows used the column default 'free' without a stated price.
+-- Null means the price was never stated. An explicit 'free' is kept.
 UPDATE public.events
 SET price_type = 'unknown'
-WHERE price_type IS NULL OR price_type = 'free';
+WHERE price_type IS NULL;
 
+-- WAT is an abbreviation, not an IANA timezone. Only the Cameroon fixtures
+-- that used that abbreviation are set to Africa/Douala. Other rows are left
+-- for a curator to classify.
 UPDATE public.events
 SET timezone = 'Africa/Douala'
-WHERE timezone IS NULL OR timezone = 'WAT';
+WHERE source_url IN (
+  'https://ccima.cm/events/sme-tax-masterclass-2026',
+  'https://producttank.africa/summit-2026',
+  'https://siliconmountain.cm/pitch-night',
+  'https://agribiz.africa/women-export-forum',
+  'https://gdg.community.dev/events/yaounde-rn-masterclass'
+)
+AND (timezone IS NULL OR timezone = 'WAT');
+
+ALTER TABLE public.events ALTER COLUMN timezone DROP DEFAULT;
+
+-- official_website was the old column default, not a curator classification.
+-- It is normalized to the provenance vocabulary. Verification stays unreviewed.
+UPDATE public.events
+SET source_type = 'organizer_site'
+WHERE source_type = 'official_website';
+
+ALTER TABLE public.events ALTER COLUMN source_type DROP DEFAULT;
+ALTER TABLE public.events ALTER COLUMN source_type SET NOT NULL;
 
 ALTER TABLE public.events
   ALTER COLUMN verification_state SET NOT NULL,
@@ -120,7 +144,6 @@ ALTER TABLE public.events
   ALTER COLUMN publication_status SET NOT NULL,
   ALTER COLUMN publication_status SET DEFAULT 'draft',
   ALTER COLUMN price_type SET DEFAULT 'unknown',
-  ALTER COLUMN timezone SET DEFAULT 'Africa/Douala',
   ALTER COLUMN updated_at SET NOT NULL,
   ALTER COLUMN updated_at SET DEFAULT now(),
   ALTER COLUMN city DROP NOT NULL;
@@ -184,6 +207,20 @@ ALTER TABLE public.events
     OR (
       latitude BETWEEN -90 AND 90
       AND longitude BETWEEN -180 AND 180
+    )
+  );
+
+ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_source_type_check;
+ALTER TABLE public.events
+  ADD CONSTRAINT events_source_type_check
+  CHECK (
+    source_type IN (
+      'organizer_site',
+      'social_post',
+      'partner_feed',
+      'user_suggestion',
+      'organizer_submission',
+      'collector'
     )
   );
 

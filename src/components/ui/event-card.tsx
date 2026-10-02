@@ -63,7 +63,16 @@ export function EventCard({ event, onPress }: EventCardProps) {
                 styles.placeholderImage,
                 { backgroundColor: colors.surfaceSecondary },
               ]}
-            />
+            >
+              <ThemeText
+                variant="caption"
+                numberOfLines={3}
+                themeColor="textMuted"
+                style={styles.placeholderLabel}
+              >
+                {event.primaryCategory || event.eventType}
+              </ThemeText>
+            </View>
           )}
 
           {event.dateBadgeText && (
@@ -136,10 +145,12 @@ export function EventCard({ event, onPress }: EventCardProps) {
               themeColor="textMuted"
             >
               {event.format === 'virtual'
-                ? 'Online (Virtual)'
+                ? 'Online'
                 : event.venueName
-                  ? `${event.venueName}, ${event.city}`
-                  : (event.city ?? 'Yaoundé')}
+                  ? event.city
+                    ? `${event.venueName}, ${event.city}`
+                    : event.venueName
+                  : (event.city ?? 'Venue to be confirmed')}
             </ThemeText>
           </View>
 
@@ -167,7 +178,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
               style={[styles.chip, { backgroundColor: colors.primarySoft }]}
             >
               <ThemeText variant="caption" themeColor="primary">
-                {event.priceLabel ?? 'Free'}
+                {event.priceLabel ?? 'Price not stated'}
               </ThemeText>
             </View>
 
@@ -187,13 +198,28 @@ export function EventCard({ event, onPress }: EventCardProps) {
             </View>
           </View>
 
-          {/* Trust Verification Badge */}
-          <View style={styles.trustRow}>
-            <CheckCircle2 size={13} color={colors.success} strokeWidth={2} />
-            <ThemeText variant="caption" themeColor="success">
-              {event.verificationText ?? 'Official source · Checked today'}
-            </ThemeText>
-          </View>
+          {event.verificationText ? (
+            <View style={styles.trustRow}>
+              {event.verificationState === 'source_confirmed' ||
+              event.verificationState === 'organizer_confirmed' ? (
+                <CheckCircle2
+                  size={13}
+                  color={colors.success}
+                  strokeWidth={2}
+                />
+              ) : null}
+              <ThemeText
+                variant="caption"
+                themeColor={
+                  event.verificationState === 'unreviewed'
+                    ? 'textMuted'
+                    : 'success'
+                }
+              >
+                {event.verificationText}
+              </ThemeText>
+            </View>
+          ) : null}
         </View>
       </View>
     </Card>
@@ -222,6 +248,12 @@ const styles = StyleSheet.create({
   placeholderImage: {
     width: '100%',
     height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+  },
+  placeholderLabel: {
+    textAlign: 'center',
   },
   dateBadge: {
     position: 'absolute',

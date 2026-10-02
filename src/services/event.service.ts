@@ -1,10 +1,13 @@
 import { supabase } from '@/lib/supabase';
 import {
+  buildPriceLabel,
   buildTrustLabel,
+  buildVerificationText,
+  coverImageUrl,
   mapFormat,
-  sourceWasConfirmed,
+  verificationState,
 } from '@/services/event-mapping';
-import type { EventCardData } from '@/types/event.type';
+import type { EventCardData, PriceType } from '@/types/event.type';
 
 /**
  * Maps a raw Supabase `events` row to the app's EventCardData shape.
@@ -13,39 +16,68 @@ import type { EventCardData } from '@/types/event.type';
  * If the schema changes, update this function only.
  */
 function mapRowToEventCard(row: Record<string, unknown>): EventCardData {
-  const startAt = row.start_at as string | null;
-  const city = (row.city as string) ?? '';
-  const format = row.format as string;
-  const isVerified = sourceWasConfirmed(row);
-  const lastChecked = row.last_checked_at as string | null;
+  const startAt = typeof row.start_at === 'string' ? row.start_at : null;
+  const city = typeof row.city === 'string' ? row.city : undefined;
+  const state = verificationState(row);
+  const lastChecked =
+    typeof row.last_checked_at === 'string' ? row.last_checked_at : null;
+  const priceType = priceTypeOf(row.price_type);
+  const publication = row.publication_status;
 
   return {
     id: row.id as string,
-    slug: slugify(row.title as string),
-    title: row.title as string,
-    organizerName: (row.organizer_name as string) ?? 'Unknown organizer',
-    eventType: (row.category as string) ?? 'Event',
-    primaryCategory: (row.category as string) ?? '',
-    startsAt: startAt ?? new Date().toISOString(),
-    endsAt: (row.end_at as string) ?? undefined,
-    timezone: 'WAT',
-    format: mapFormat(format),
-    venueName: (row.venue_name as string) ?? undefined,
-    city: city || undefined,
-    priceType: 'free',
-    priceLabel: 'Free',
-    coverImageUrl: getCoverImage(row.category as string),
-    status: 'scheduled',
-    trustLabel: buildTrustLabel(isVerified, row.source_url as string),
+    slug: slugify(typeof row.title === 'string' ? row.title : ''),
+    title: typeof row.title === 'string' ? row.title : '',
+    organizerName:
+      typeof row.organizer_name === 'string' && row.organizer_name.trim()
+        ? row.organizer_name
+        : 'Organizer not stated',
+    eventType: typeof row.category === 'string' ? row.category : '',
+    primaryCategory: typeof row.category === 'string' ? row.category : '',
+    startsAt: startAt ?? '',
+    endsAt: typeof row.end_at === 'string' ? row.end_at : undefined,
+    timezone: typeof row.timezone === 'string' ? row.timezone : '',
+    format: mapFormat(typeof row.format === 'string' ? row.format : ''),
+    venueName: typeof row.venue_name === 'string' ? row.venue_name : undefined,
+    city,
+    priceType,
+    priceLabel: buildPriceLabel(row),
+    coverImageUrl: coverImageUrl(row),
+    registrationUrl:
+      typeof row.registration_url === 'string'
+        ? row.registration_url
+        : undefined,
+    status:
+      publication === 'cancelled'
+        ? 'cancelled'
+        : publication === 'ended'
+          ? 'completed'
+          : 'scheduled',
+    verificationState: state,
+    trustLabel: buildTrustLabel(state),
     lastCheckedAt: lastChecked ?? undefined,
-    verificationText: buildVerificationText(isVerified, lastChecked),
-    sourceUrl: (row.source_url as string) ?? undefined,
-    description: (row.description as string) ?? undefined,
+    verificationText: buildVerificationText(state, lastChecked),
+    sourceUrl: typeof row.source_url === 'string' ? row.source_url : undefined,
+    description:
+      typeof row.description === 'string' ? row.description : undefined,
     dateFormatted: formatEventDate(startAt),
     dateBadgeText: buildDateBadge(startAt),
     distanceText: undefined,
     distanceKm: undefined,
   };
+}
+
+function priceTypeOf(value: unknown): PriceType {
+  if (
+    value === 'free' ||
+    value === 'paid' ||
+    value === 'free_with_registration' ||
+    value === 'variable' ||
+    value === 'unknown'
+  ) {
+    return value;
+  }
+  return 'unknown';
 }
 
 /**
@@ -59,33 +91,10 @@ function slugify(title: string): string {
 }
 
 /**
- * Builds verification text with last-checked timestamp.
- */
-function buildVerificationText(
-  isVerified: boolean,
-  lastChecked: string | null,
-): string {
-  const sourceLabel = isVerified ? 'Official source' : 'Source available';
-  if (!lastChecked) return sourceLabel;
-
-  const checkedDate = new Date(lastChecked);
-  const now = new Date();
-  const diffMs = now.getTime() - checkedDate.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-  let timeAgo: string;
-  if (diffHours < 1) timeAgo = 'just now';
-  else if (diffHours < 24) timeAgo = `${diffHours}h ago`;
-  else timeAgo = `${Math.floor(diffHours / 24)}d ago`;
-
-  return `${sourceLabel} · Checked ${timeAgo}`;
-}
-
-/**
  * Formats a date string to a human-readable event date.
  */
 function formatEventDate(startsAt: string | null): string {
-  if (!startsAt) return 'Date TBD';
+  if (!startsAt) return 'Date not stated';
   try {
     const date = new Date(startsAt);
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -120,7 +129,7 @@ function formatEventDate(startsAt: string | null): string {
  * Builds a short date badge like "TODAY", "TOMORROW", or "SEP 05".
  */
 function buildDateBadge(startsAt: string | null): string {
-  if (!startsAt) return 'TBD';
+  if (!startsAt) return '';
   try {
     const eventDate = new Date(startsAt);
     const now = new Date();
@@ -156,26 +165,6 @@ function buildDateBadge(startsAt: string | null): string {
   } catch {
     return 'TBD';
   }
-}
-
-/**
- * Returns a category-appropriate cover image URL.
- */
-function getCoverImage(category: string | null): string {
-  const cat = (category ?? '').toLowerCase();
-  if (cat.includes('business') || cat.includes('finance'))
-    return 'https://images.unsplash.com/photo-1573164713988-8665fc963095?w=600&auto=format&fit=crop&q=80';
-  if (
-    cat.includes('tech') ||
-    cat.includes('software') ||
-    cat.includes('engineering')
-  )
-    return 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&auto=format&fit=crop&q=80';
-  if (cat.includes('career'))
-    return 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&auto=format&fit=crop&q=80';
-  if (cat.includes('agri') || cat.includes('trade'))
-    return 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=600&auto=format&fit=crop&q=80';
-  return 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=600&auto=format&fit=crop&q=80';
 }
 
 // ── Public API ──

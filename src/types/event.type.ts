@@ -91,10 +91,12 @@ export interface EventCardData {
   city?: string;
   countryCode?: string;
 
-  priceType: 'free' | 'paid' | 'variable' | 'unknown';
+  priceType: PriceType;
   priceLabel?: string;
 
   coverImageUrl?: string;
+  registrationUrl?: string;
+  verificationState?: 'unreviewed' | 'source_confirmed' | 'organizer_confirmed';
 
   status: 'scheduled' | 'postponed' | 'cancelled' | 'completed';
 

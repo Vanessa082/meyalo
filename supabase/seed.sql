@@ -1,7 +1,9 @@
 -- ----------------------------------------------------------------------------
 -- DEVELOPMENT FIXTURES. Not production data.
 -- Five upcoming-relative events so a fresh database is not empty.
--- Applied after migrations. Do not treat these rows as verified supply.
+-- They have not been curator-checked, so they stay unreviewed drafts.
+-- Price is unknown because these rows do not state one.
+-- Timezone is Africa/Douala because these fixtures are in Cameroon.
 -- ----------------------------------------------------------------------------
 
 INSERT INTO public.organizers (name) VALUES
@@ -27,6 +29,7 @@ INSERT INTO public.events (
   organizer_name,
   organizer_id,
   source_url,
+  source_type,
   timezone,
   price_type,
   publication_status,
@@ -49,11 +52,12 @@ SELECT
   fixture.organizer_name,
   organizer.id,
   fixture.source_url,
+  'organizer_site',
   'Africa/Douala',
   'unknown',
-  'published',
-  'source_confirmed',
-  now()
+  'draft',
+  'unreviewed',
+  NULL
 FROM (
   VALUES
     (
