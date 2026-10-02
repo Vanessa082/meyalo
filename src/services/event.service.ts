@@ -1,4 +1,9 @@
 import { supabase } from '@/lib/supabase';
+import {
+  buildTrustLabel,
+  mapFormat,
+  sourceWasConfirmed,
+} from '@/services/event-mapping';
 import type { EventCardData } from '@/types/event.type';
 
 /**
@@ -11,7 +16,7 @@ function mapRowToEventCard(row: Record<string, unknown>): EventCardData {
   const startAt = row.start_at as string | null;
   const city = (row.city as string) ?? '';
   const format = row.format as string;
-  const isVerified = row.is_verified as boolean;
+  const isVerified = sourceWasConfirmed(row);
   const lastChecked = row.last_checked_at as string | null;
 
   return {
@@ -44,15 +49,6 @@ function mapRowToEventCard(row: Record<string, unknown>): EventCardData {
 }
 
 /**
- * Maps DB format string to EventCardData format union.
- */
-function mapFormat(format: string): 'in_person' | 'virtual' | 'hybrid' {
-  if (format === 'physical') return 'in_person';
-  if (format === 'hybrid') return 'hybrid';
-  return 'virtual';
-}
-
-/**
  * Generates a URL-safe slug from a title.
  */
 function slugify(title: string): string {
@@ -60,19 +56,6 @@ function slugify(title: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-}
-
-/**
- * Builds an evidence-based trust label (Blueprint Section 8).
- * No generic "Verified" — only evidence-backed claims.
- */
-function buildTrustLabel(
-  isVerified: boolean,
-  sourceUrl: string | null,
-): string {
-  if (!sourceUrl) return 'Community-submitted';
-  if (isVerified) return 'Official source';
-  return 'Source available';
 }
 
 /**
@@ -267,6 +250,3 @@ export const EventService = {
     }
   },
 };
-
-// Re-export for backward compatibility with existing imports
-export const DEMO_FALLBACK_EVENTS: EventCardData[] = [];

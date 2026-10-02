@@ -1,14 +1,17 @@
 import { useRouter } from 'expo-router';
 import { Compass, Sparkles } from 'lucide-react-native';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { ThemeText } from '@/components/ui/theme-text';
 import { useTheme } from '@/hooks/use-theme';
+import { t } from '@/i18n';
+import { useAppLanguage } from '@/i18n/locale-provider';
 
 export default function WelcomeOnboardingScreen() {
   const colors = useTheme();
   const router = useRouter();
+  const { language, setExplicitLanguage } = useAppLanguage();
 
   const handleGetStarted = () => {
     router.push('/(onboarding)/location');
@@ -20,6 +23,41 @@ export default function WelcomeOnboardingScreen() {
 
   return (
     <Screen style={styles.container}>
+      <View style={styles.languageRow}>
+        {(['fr', 'en'] as const).map((option) => {
+          const selected = language === option;
+          return (
+            <Pressable
+              key={option}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={
+                option === 'fr'
+                  ? t('common.languageFrench')
+                  : t('common.languageEnglish')
+              }
+              onPress={() => setExplicitLanguage(option)}
+              style={[
+                styles.languageOption,
+                {
+                  borderColor: selected ? colors.primary : colors.border,
+                  backgroundColor: selected
+                    ? colors.primarySoft
+                    : colors.surface,
+                },
+              ]}
+            >
+              <ThemeText
+                variant="captionBold"
+                style={{ color: selected ? colors.primary : colors.textMuted }}
+              >
+                {option === 'fr' ? 'FR' : 'EN'}
+              </ThemeText>
+            </Pressable>
+          );
+        })}
+      </View>
+
       {/* ─── Hero Content ─── */}
       <View style={styles.content}>
         <View
@@ -77,6 +115,20 @@ const styles = StyleSheet.create({
     paddingTop: 48,
     paddingBottom: 32,
     justifyContent: 'space-between',
+  },
+  languageRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  languageOption: {
+    minWidth: 44,
+    minHeight: 32,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     marginTop: 40,

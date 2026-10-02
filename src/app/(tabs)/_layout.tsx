@@ -10,6 +10,7 @@ import { Calendar, Compass, MapPin, User } from 'lucide-react-native';
 import type { ColorValue } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { t } from '@/i18n';
+import { useAppLanguage } from '@/i18n/locale-provider';
 
 function MeyaloMarkIcon({ focused }: { color: ColorValue; focused: boolean }) {
   // The mark is always teal when active, muted grey when inactive.
@@ -32,6 +33,7 @@ function MeyaloMarkIcon({ focused }: { color: ColorValue; focused: boolean }) {
 
 export default function TabsLayout() {
   const colors = useTheme();
+  useAppLanguage();
 
   return (
     <Tabs
