@@ -56,3 +56,30 @@ pnpm exec eas build --profile development --platform android
 ```
 
 Set the `EXPO_PUBLIC_*` variables in EAS for cloud builds. Do not commit them.
+
+## Curation console (local)
+
+The console lives at `/console`. It signs in with email and password and only shows events to accounts with the curator role (`user_roles.role = 'admin'`). The database enforces every permission; the console only reflects it.
+
+Run it against the local Supabase stack, never the remote project. `.env` points at the remote project, so override the two public variables on the command line:
+
+```bash
+pnpm dlx supabase start
+eval "$(pnpm dlx supabase status -o env)"
+SUPABASE_URL=$API_URL SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY pnpm curator:local
+EXPO_PUBLIC_SUPABASE_URL=$API_URL EXPO_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY pnpm web
+```
+
+`pnpm curator:local` creates `curator@meyalo.local` (curator) and `member@meyalo.local` (no role) with password `LOCAL_ACCOUNT_PASSWORD`, or `local-dev-password` when unset. It refuses non-local URLs. These are development accounts, not seed data.
+
+## Tests
+
+| Command | Needs | Covers |
+|---|---|---|
+| `pnpm test` | Nothing | Validation, event rules, use cases, mapping, repository input checks |
+| `pnpm test:db` | Local stack, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Repository against the database as curator, signed-in non-curator and anonymous. Refuses non-local URLs and removes its fixtures |
+| `pnpm test:rls` | Same as above | Row Level Security boundaries |
+
+## Migrations on the remote project
+
+The remote project is on the old schema. Migrations are applied there only when the owner decides, in order: `003_domain_model.sql`, `004_row_level_security.sql`, then `005_curation.sql`. Never run `001`, `002` or `seed.sql` against the remote project, and never reset it.

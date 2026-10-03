@@ -1,36 +1,31 @@
 /**
- * Pure event-field mapping. No database or environment access, so it can be
- * tested without the Supabase client.
- *
- * Verification comes only from verification_state. The removed is_verified
- * flag is not read.
+ * Explicit conversions from the canonical `Event` to consumer display values.
+ * No database or environment access, so it runs under the Node test runner.
  */
-
-export type VerificationState =
-  | 'unreviewed'
-  | 'source_confirmed'
-  | 'organizer_confirmed';
+import type {
+  Event,
+  EventCardData,
+  VerificationState,
+} from '../types/event.type.ts';
+import { httpsHost } from './url.ts';
+import { instantToWallTime } from './zoned-time.ts';
 
 const STALE_CHECK_MS = 14 * 24 * 60 * 60 * 1000;
 
-export function mapFormat(format: string): 'in_person' | 'virtual' | 'hybrid' {
-  if (format === 'physical' || format === 'in_person') return 'in_person';
-  if (format === 'hybrid') return 'hybrid';
-  return 'virtual';
-}
-
-export function verificationState(row: {
-  verification_state?: unknown;
-}): VerificationState {
-  if (
-    row.verification_state === 'source_confirmed' ||
-    row.verification_state === 'organizer_confirmed' ||
-    row.verification_state === 'unreviewed'
-  ) {
-    return row.verification_state;
-  }
-  return 'unreviewed';
-}
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 export function buildTrustLabel(state: VerificationState): string {
   if (state === 'organizer_confirmed') return 'Confirmed by organizer';
@@ -51,38 +46,16 @@ export function buildVerificationText(
   if (now.getTime() - checked.getTime() >= STALE_CHECK_MS) {
     return 'Details may have changed — confirm at source';
   }
-
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  const date = `${checked.getUTCDate()} ${months[checked.getUTCMonth()]} ${checked.getUTCFullYear()}`;
+  const date = `${checked.getUTCDate()} ${MONTHS[checked.getUTCMonth()]} ${checked.getUTCFullYear()}`;
   return `${label} · Checked ${date}`;
 }
 
-export function buildPriceLabel(row: {
-  price_type?: unknown;
-  price_min?: unknown;
-  price_max?: unknown;
-  currency?: unknown;
-}): string {
-  const priceType = typeof row.price_type === 'string' ? row.price_type : null;
+export function buildPriceLabel(
+  event: Pick<Event, 'priceType' | 'priceMin' | 'priceMax' | 'currency'>,
+): string {
+  const { priceType, priceMin: min, priceMax: max, currency } = event;
   if (priceType === 'free') return 'Free';
   if (priceType === 'free_with_registration') return 'Free with registration';
-
-  const min = numeric(row.price_min);
-  const max = numeric(row.price_max);
-  const currency = typeof row.currency === 'string' ? row.currency : null;
 
   if (priceType === 'paid' || priceType === 'variable') {
     if (min === null && max === null) {
@@ -100,53 +73,111 @@ export function buildPriceLabel(row: {
   return 'Price not stated';
 }
 
-/**
- * An event image is shown only when the row itself has an https image URL.
- * Stock photos are not substituted.
- */
-export function coverImageUrl(row: {
-  cover_image_url?: unknown;
-}): string | undefined {
-  if (
-    typeof row.cover_image_url === 'string' &&
-    row.cover_image_url.startsWith('https://')
-  ) {
-    return row.cover_image_url;
-  }
-  return undefined;
-}
-
 export function publicLinkLabel(event: {
-  registrationUrl?: string;
-  sourceUrl?: string;
+  registrationUrl?: string | null;
+  sourceUrl?: string | null;
 }): { title: string; url?: string } {
-  const registration = event.registrationUrl?.startsWith('https://')
-    ? event.registrationUrl
-    : undefined;
-  const source = event.sourceUrl?.startsWith('https://')
-    ? event.sourceUrl
-    : undefined;
-  const url = registration ?? source;
-  if (!url) return { title: 'No link stated' };
-
-  try {
-    const host = new URL(url).host;
+  const registrationHost = httpsHost(event.registrationUrl);
+  if (registrationHost && event.registrationUrl) {
     return {
-      title: registration ? `Register on ${host}` : `View details on ${host}`,
-      url,
+      title: `Register on ${registrationHost}`,
+      url: event.registrationUrl,
     };
-  } catch {
-    return { title: 'No link stated' };
   }
+  const sourceHost = httpsHost(event.sourceUrl);
+  if (sourceHost && event.sourceUrl) {
+    return { title: `View details on ${sourceHost}`, url: event.sourceUrl };
+  }
+  return { title: 'No link stated' };
 }
 
-function numeric(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return null;
+/** "Sat, 3 Oct · 9:00 AM" in the event timezone. */
+export function formatEventDate(
+  startAt: string,
+  timezone: string | null,
+): string {
+  const zone = timezone ?? 'UTC';
+  const wall = instantToWallTime(startAt, zone);
+  if (!wall) return 'Date not stated';
+  const [date, time] = wall.split(' ');
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][
+    new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+  ];
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  const minutes = minute.toString().padStart(2, '0');
+  const zoneNote = timezone ? '' : ' UTC';
+  return `${weekday}, ${day} ${MONTHS[month - 1]} · ${hour12}:${minutes} ${suffix}${zoneNote}`;
+}
+
+/** "TODAY", "TOMORROW" or "OCT 05", by calendar day in the event timezone. */
+export function buildDateBadge(
+  startAt: string,
+  timezone: string | null,
+  now: Date = new Date(),
+): string {
+  const zone = timezone ?? 'UTC';
+  const eventDay = instantToWallTime(startAt, zone).slice(0, 10);
+  const today = instantToWallTime(now.toISOString(), zone).slice(0, 10);
+  if (!eventDay || !today) return '';
+  const dayMs = (value: string) => Date.parse(`${value}T00:00:00Z`);
+  const diffDays = Math.round((dayMs(eventDay) - dayMs(today)) / 86_400_000);
+  if (diffDays === 0) return 'TODAY';
+  if (diffDays === 1) return 'TOMORROW';
+  const [, month, day] = eventDay.split('-').map(Number);
+  return `${MONTHS[month - 1].toUpperCase()} ${day.toString().padStart(2, '0')}`;
+}
+
+function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/** Canonical event -> consumer card view model. */
+export function toEventCard(
+  event: Event,
+  now: Date = new Date(),
+): EventCardData {
+  return {
+    id: event.id,
+    slug: slugify(event.title),
+    title: event.title,
+    organizerName: event.organizerName,
+    eventType: event.category,
+    primaryCategory: event.category,
+    startsAt: event.startAt,
+    endsAt: event.endAt ?? undefined,
+    timezone: event.timezone ?? '',
+    format: event.format,
+    venueName: event.venueName ?? undefined,
+    city: event.city ?? undefined,
+    countryCode: event.countryCode ?? undefined,
+    priceType: event.priceType,
+    priceLabel: buildPriceLabel(event),
+    registrationUrl: event.registrationUrl ?? undefined,
+    status:
+      event.publicationStatus === 'cancelled'
+        ? 'cancelled'
+        : event.publicationStatus === 'ended'
+          ? 'completed'
+          : 'scheduled',
+    verificationState: event.verificationState,
+    trustLabel: buildTrustLabel(event.verificationState),
+    lastCheckedAt: event.lastCheckedAt ?? undefined,
+    verificationText: buildVerificationText(
+      event.verificationState,
+      event.lastCheckedAt,
+      now,
+    ),
+    sourceUrl: event.sourceUrl,
+    description: event.description,
+    dateFormatted: formatEventDate(event.startAt, event.timezone),
+    dateBadgeText: buildDateBadge(event.startAt, event.timezone, now),
+  };
 }
 
 function formatMoney(amount: number, currency: string | null): string {

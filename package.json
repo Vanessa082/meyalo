@@ -51,8 +51,10 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "typecheck": "tsc --noEmit",
-    "test": "find src -name '*.test.ts' -print0 | xargs -0 node --test",
-    "test:rls": "node scripts/test-rls.mjs"
+    "test": "find src -name '*.test.ts' ! -name '*.db.test.ts' -print0 | xargs -0 node --test",
+    "test:db": "find src -name '*.db.test.ts' -print0 | xargs -0 node --test --test-concurrency=1",
+    "test:rls": "node scripts/test-rls.mjs",
+    "curator:local": "node scripts/create-local-curator.mjs"
   },
   "private": true,
   "packageManager": "pnpm@10.24.0"

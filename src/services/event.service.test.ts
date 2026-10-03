@@ -1,45 +1,22 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { makeEvent } from '../test-support/event-fixtures.ts';
 import {
+  buildDateBadge,
   buildPriceLabel,
   buildTrustLabel,
   buildVerificationText,
-  coverImageUrl,
-  mapFormat,
+  formatEventDate,
   publicLinkLabel,
-  verificationState,
+  toEventCard,
 } from './event-mapping.ts';
 
-describe('mapFormat', () => {
-  it('maps stored format values onto the app format', () => {
-    assert.equal(mapFormat('physical'), 'in_person');
-    assert.equal(mapFormat('in_person'), 'in_person');
-    assert.equal(mapFormat('hybrid'), 'hybrid');
-    assert.equal(mapFormat('online'), 'virtual');
-  });
-});
-
-describe('verificationState', () => {
-  it('uses only verification_state and ignores a leftover is_verified flag', () => {
-    assert.equal(
-      verificationState({ verification_state: 'source_confirmed' }),
-      'source_confirmed',
-    );
-    assert.equal(
-      verificationState({ verification_state: 'organizer_confirmed' }),
-      'organizer_confirmed',
-    );
-    assert.equal(
-      verificationState({
-        verification_state: 'unreviewed',
-        is_verified: true,
-      }),
-      'unreviewed',
-    );
-    assert.equal(verificationState({ is_verified: true }), 'unreviewed');
-    assert.equal(verificationState({}), 'unreviewed');
-  });
-});
+const NO_PRICE = {
+  priceType: 'unknown',
+  priceMin: null,
+  priceMax: null,
+  currency: null,
+} as const;
 
 describe('buildTrustLabel', () => {
   it('names the verification state and does not say verified', () => {
@@ -80,42 +57,25 @@ describe('buildVerificationText', () => {
 
 describe('buildPriceLabel', () => {
   it('keeps an explicit free price and does not invent one', () => {
-    assert.equal(buildPriceLabel({ price_type: 'free' }), 'Free');
-    assert.equal(
-      buildPriceLabel({ price_type: 'unknown' }),
-      'Price not stated',
-    );
-    assert.equal(buildPriceLabel({}), 'Price not stated');
+    assert.equal(buildPriceLabel({ ...NO_PRICE, priceType: 'free' }), 'Free');
+    assert.equal(buildPriceLabel(NO_PRICE), 'Price not stated');
     assert.equal(
       buildPriceLabel({
-        price_type: 'paid',
-        price_min: 20000,
+        ...NO_PRICE,
+        priceType: 'paid',
+        priceMin: 20000,
         currency: 'XAF',
       }),
       'From 20 000 FCFA',
     );
     assert.equal(
       buildPriceLabel({
-        price_type: 'paid',
-        price_min: 20000,
-        price_max: 20000,
+        priceType: 'paid',
+        priceMin: 20000,
+        priceMax: 20000,
         currency: 'XAF',
       }),
       '20 000 FCFA',
-    );
-  });
-});
-
-describe('coverImageUrl', () => {
-  it('uses only an https image on the event row', () => {
-    assert.equal(
-      coverImageUrl({ cover_image_url: 'https://cdn.example/event.jpg' }),
-      'https://cdn.example/event.jpg',
-    );
-    assert.equal(coverImageUrl({}), undefined);
-    assert.equal(
-      coverImageUrl({ cover_image_url: 'http://cdn.example/event.jpg' }),
-      undefined,
     );
   });
 });
@@ -134,5 +94,35 @@ describe('publicLinkLabel', () => {
       url: 'https://ccima.cm/event',
     });
     assert.deepEqual(publicLinkLabel({}), { title: 'No link stated' });
+  });
+});
+
+describe('event dates', () => {
+  it('formats in the event timezone, not the device timezone', () => {
+    assert.equal(
+      formatEventDate('2026-10-12T08:00:00.000Z', 'Africa/Douala'),
+      'Mon, 12 Oct · 9:00 AM',
+    );
+    assert.equal(
+      buildDateBadge(
+        '2026-10-03T23:30:00.000Z',
+        'Africa/Douala',
+        new Date('2026-10-03T12:00:00.000Z'),
+      ),
+      'TOMORROW',
+    );
+  });
+});
+
+describe('toEventCard', () => {
+  it('maps the canonical event explicitly and honestly', () => {
+    const card = toEventCard(
+      makeEvent({ publicationStatus: 'cancelled' }),
+      new Date('2026-10-03T12:00:00.000Z'),
+    );
+    assert.equal(card.status, 'cancelled');
+    assert.equal(card.trustLabel, 'Not reviewed');
+    assert.equal(card.priceLabel, 'Free');
+    assert.equal(card.registrationUrl, 'https://example.org/register');
   });
 });
