@@ -65,7 +65,7 @@ export const privacyPolicy: LocalizedLegalDocument = {
                 'No',
               ],
               [
-                'Account: email address, how you sign in (email code, Apple or Google), the name Apple or Google shares if any, and the consent you gave when you created it',
+                'Account: email address, how you sign in (email code, Apple or Google), and the consent you gave when you created it',
                 'Our server',
                 'Only if you create an account',
               ],
@@ -108,8 +108,8 @@ export const privacyPolicy: LocalizedLegalDocument = {
             kind: 'list',
             items: [
               'Sign in with a 6-digit code sent to your email. There is no password.',
-              'On iPhone, you can also use Sign in with Apple. If you choose "Hide my email", we receive an Apple relay address instead of your real one. Apple may share your name only the first time, and we do not require it.',
-              'Sign in with Google will be added later. We will receive your email address and the name Google shares.',
+              'On iPhone, you can also use Sign in with Apple. We ask Apple only for your email address. If you choose "Hide my email", we receive an Apple relay address instead of your real one.',
+              'Sign in with Google will be added later. We will ask Google only for your email address.',
               'We never ask for your contacts, your calendar or any other access when you sign in.',
             ],
           },
@@ -132,6 +132,10 @@ export const privacyPolicy: LocalizedLegalDocument = {
           {
             kind: 'paragraph',
             text: 'Signing out keeps the copy on your phone and returns you to guest mode. "Clear data on this phone" also signs you out.',
+          },
+          {
+            kind: 'paragraph',
+            text: 'Plans with friends: if you are signed in and going to an event, you can share a private link. We store the plan (the event, the first name you choose to show, if any, and whether friends can see who is coming) with your account. Friends who open the link answer with a first name and "I\u2019m in", "Maybe" or "Can\u2019t", without an account, after a consent box. You see their first names and answers. Other friends see only how many are coming, unless you chose to show names; then they see the first names and answers given after that choice, and friends are told before they answer. A friend can change or remove their answer from the same browser or phone. Plans and every answer are deleted 1 day after the event, or when you delete the plan or your account.',
           },
         ],
       },
@@ -162,6 +166,10 @@ export const privacyPolicy: LocalizedLegalDocument = {
                 '3 years after the deletion, then removed automatically. [UNVERIFIED: the 3 years stand in for the limitation period for claims in Cameroon and have not been checked against the law text.]',
               ],
               ['Event reports', '12 months after they were sent'],
+              [
+                'Plans with friends and the answers to them',
+                '1 day after the event, then deleted automatically',
+              ],
               [
                 'Event suggestions',
                 '12 months after the decision to accept or refuse them',
@@ -390,7 +398,7 @@ export const privacyPolicy: LocalizedLegalDocument = {
                 'Non',
               ],
               [
-                'Compte : adresse e-mail, mode de connexion (code par e-mail, Apple ou Google), le nom transmis par Apple ou Google le cas échéant, et le consentement donné à la création',
+                'Compte : adresse e-mail, mode de connexion (code par e-mail, Apple ou Google), et le consentement donné à la création',
                 'Notre serveur',
                 'Seulement si vous créez un compte',
               ],
@@ -433,8 +441,8 @@ export const privacyPolicy: LocalizedLegalDocument = {
             kind: 'list',
             items: [
               'Connectez-vous avec un code à 6 chiffres envoyé par e-mail. Il n’y a pas de mot de passe.',
-              'Sur iPhone, vous pouvez aussi utiliser Se connecter avec Apple. Si vous choisissez « Masquer mon adresse e-mail », nous recevons une adresse relais d’Apple au lieu de la vôtre. Apple peut ne transmettre votre nom que la première fois, et nous ne l’exigeons pas.',
-              'La connexion avec Google sera ajoutée plus tard. Nous recevrons votre adresse e-mail et le nom transmis par Google.',
+              'Sur iPhone, vous pouvez aussi utiliser Se connecter avec Apple. Nous demandons à Apple uniquement votre adresse e-mail. Si vous choisissez « Masquer mon adresse e-mail », nous recevons une adresse relais d’Apple au lieu de la vôtre.',
+              'La connexion avec Google sera ajoutée plus tard. Nous demanderons à Google uniquement votre adresse e-mail.',
               'Nous ne demandons jamais vos contacts, votre agenda ou un autre accès lors de la connexion.',
             ],
           },
@@ -457,6 +465,10 @@ export const privacyPolicy: LocalizedLegalDocument = {
           {
             kind: 'paragraph',
             text: 'Se déconnecter garde la copie sur votre téléphone et vous remet en mode invité. « Effacer les données de ce téléphone » vous déconnecte aussi.',
+          },
+          {
+            kind: 'paragraph',
+            text: 'Projets avec des amis : si vous êtes connecté et allez à un événement, vous pouvez partager un lien privé. Nous conservons le projet (l\u2019événement, le prénom que vous choisissez d\u2019afficher, le cas échéant, et si les amis peuvent voir qui vient) avec votre compte. Les amis qui ouvrent le lien répondent avec un prénom et « J\u2019y vais », « Peut-être » ou « Je ne peux pas », sans compte, après une case de consentement. Vous voyez leurs prénoms et réponses. Les autres amis voient seulement combien viennent, sauf si vous avez choisi d\u2019afficher les prénoms ; ils voient alors les prénoms et réponses donnés après ce choix, et les amis en sont informés avant de répondre. Un ami peut modifier ou retirer sa réponse depuis le même navigateur ou téléphone. Les projets et toutes les réponses sont supprimés 1 jour après l\u2019événement, ou quand vous supprimez le projet ou votre compte.',
           },
         ],
       },
@@ -488,6 +500,10 @@ export const privacyPolicy: LocalizedLegalDocument = {
                 '3 ans après la suppression, puis effacée automatiquement. [NON VÉRIFIÉ : ces 3 ans remplacent le délai de prescription des actions au Cameroun et n’ont pas été vérifiés dans le texte de loi.]',
               ],
               ['Signalements', '12 mois après leur envoi'],
+              [
+                'Projets avec des amis et leurs réponses',
+                '1 jour après l’événement, puis supprimés automatiquement',
+              ],
               [
                 'Propositions d’événements',
                 '12 mois après la décision de les accepter ou de les refuser',

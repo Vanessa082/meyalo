@@ -236,6 +236,46 @@ async function main() {
   const records = await userA.user.from('account_deletions').select('id');
   assert.ok(records.error, 'users cannot read deletion records');
 
+  // Plans with friends (015): the owner creates, friends answer through the
+  // token only, nobody else reads names.
+  const friendPlan = await userA.user.rpc('create_friend_plan', {
+    p_event_id: published.data.id,
+    p_owner_name: 'Amina',
+    p_show_names: false,
+  });
+  assert.equal(friendPlan.error, null, 'a signed-in owner creates a plan');
+  const planToken = friendPlan.data[0].token;
+  const answered = await anon.rpc('respond_to_friend_plan', {
+    p_token: planToken,
+    p_first_name: 'Bello',
+    p_answer: 'in',
+    p_consent_version: '2026-10-20',
+    p_consent_language: 'en',
+    p_age_group: '18_plus',
+    p_guardian_consent: null,
+    p_response_token: null,
+  });
+  assert.equal(answered.error, null, 'a friend answers without an account');
+  const seen = await anon.rpc('get_friend_plan', { p_token: planToken });
+  assert.equal(seen.data.counts.in, 1);
+  assert.equal(seen.data.names, undefined, 'a private plan shows no names');
+  const anonRead = await anon
+    .from('friend_plan_responses')
+    .select('first_name');
+  assert.ok(anonRead.error, 'anon cannot read answers directly');
+  const otherRead = await userB.user
+    .from('friend_plan_responses')
+    .select('first_name');
+  assert.equal(otherRead.data?.length ?? 0, 0, 'another user reads no answers');
+  const ownerRead = await userA.user
+    .from('friend_plan_responses')
+    .select('first_name');
+  assert.equal(
+    ownerRead.data?.[0]?.first_name,
+    'Bello',
+    'the owner reads the names',
+  );
+
   const nonAdminEdit = await userB.user
     .from('events')
     .update({ title: 'changed by user' })
@@ -361,41 +401,17 @@ async function main() {
     .eq('id', draft.data.id);
   assert.equal(adminSeesDraft.data?.length, 1, 'admin can read drafts');
 
-  const plan = await userA.user
+  const directPlan = await userA.user
     .from('friend_plans')
-    .insert({
-      owner_user_id: userA.id,
-      event_id: published.data.id,
-    })
-    .select('id, token')
-    .single();
-  assert.equal(plan.error, null);
-  const response = await anon.rpc('respond_to_friend_plan', {
-    plan_token: plan.data.token,
-    respondent_name: 'Ada',
-    respondent_answer: 'in',
-  });
-  assert.equal(response.error, null);
-  const stranger = await userB.user
-    .from('friend_plan_responses')
-    .select('id')
-    .eq('friend_plan_id', plan.data.id);
-  assert.equal(
-    stranger.data?.length,
-    0,
-    'responses are visible to the owner only',
+    .insert({ owner_user_id: userA.id, event_id: published.data.id });
+  assert.ok(
+    directPlan.error,
+    'plans are created only through create_friend_plan',
   );
-  const owner = await userA.user
-    .from('friend_plan_responses')
-    .select('first_name')
-    .eq('friend_plan_id', plan.data.id);
-  assert.equal(owner.data?.length, 1);
-  const missing = await anon.rpc('respond_to_friend_plan', {
-    plan_token: '00000000-0000-0000-0000-000000000000',
-    respondent_name: 'Ada',
-    respondent_answer: 'in',
+  const missing = await anon.rpc('get_friend_plan', {
+    p_token: '00000000-0000-4000-8000-000000000000',
   });
-  assert.ok(missing.error, 'an unknown plan token is rejected');
+  assert.equal(missing.data, null, 'an unknown plan token finds nothing');
 
   console.log('RLS boundary tests passed.');
 }

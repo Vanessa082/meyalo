@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react';
 import { Platform, Pressable, Share, StyleSheet, View } from 'react-native';
 import { DidYouGo } from '@/components/event/did-you-go';
 import { EventPoster } from '@/components/event/event-poster';
+import { InviteFriends } from '@/components/event/invite-friends';
 import { ReportSheet } from '@/components/event/report-sheet';
 import { useSaveToggle } from '@/components/event/use-save-toggle';
 import { PermissionPrimer } from '@/components/privacy/permission-primer';
@@ -457,6 +458,9 @@ function EventDetailScreen() {
     >
       {ended && planEntry ? (
         <DidYouGo entry={planEntry} title={event.title} />
+      ) : null}
+      {!ended && isGoing ? (
+        <InviteFriends eventId={event.id} title={event.title} />
       ) : null}
       <Card
         variant="flat"

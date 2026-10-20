@@ -12,8 +12,10 @@ import { AGE_GROUPS, type AgeGroup } from '@/types/consent.type';
 
 interface ConsentBlockProps {
   /** What is being sent, which changes the first sentence. */
-  kind: 'report' | 'suggestion' | 'account';
+  kind: 'report' | 'suggestion' | 'account' | 'response';
   form: ConsentForm;
+  /** A sentence added after the notice, e.g. who else will see the data. */
+  note?: string;
   /** Called before opening the Privacy Policy, e.g. to close a sheet. */
   onLeave?: () => void;
 }
@@ -22,6 +24,7 @@ const NOTICE = {
   report: 'consent.reportNotice',
   suggestion: 'consent.suggestionNotice',
   account: 'consent.accountNotice',
+  response: 'consent.responseNotice',
 } as const;
 
 const AGE_LABEL = {
@@ -36,7 +39,7 @@ const AGE_LABEL = {
  * how to have it deleted, then unticked boxes. The age group is asked once
  * and remembered on the phone.
  */
-export function ConsentBlock({ kind, form, onLeave }: ConsentBlockProps) {
+export function ConsentBlock({ kind, form, note, onLeave }: ConsentBlockProps) {
   const colors = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
@@ -53,8 +56,10 @@ export function ConsentBlock({ kind, form, onLeave }: ConsentBlockProps) {
         {t('consent.title')}
       </Text>
       <Text variant="footnote" tone="muted">
-        {t(NOTICE[kind])}{' '}
-        {kind === 'account' ? null : `${t('consent.signedIn')} `}
+        {t(NOTICE[kind])} {note ? `${note} ` : null}
+        {kind === 'report' || kind === 'suggestion'
+          ? `${t('consent.signedIn')} `
+          : null}
         {t('consent.storage')} {t('consent.deletion')}
       </Text>
       <Button

@@ -464,6 +464,8 @@ Built 2026-10-19: `saved-events-store.ts` (`attended`, `attendedAt`, `note`, rem
 - Not a social network: no profiles, followers, feeds or comments. Plan links are unguessable tokens; plans expire after the event; respondents' data is limited to first name + answer and deleted with the plan.
 - A plan needs a server-side owner: guests get an anonymous Supabase session created at the moment they first share, which upgrades to a permanent account on sign-in. The discovery profile still stays on device.
 - Abuse controls: rate limits on plan creation and responses; owner can close or delete a plan.
+- Updated 2026-10-20: the owner must be signed in (email code), instead of an anonymous session: no CAPTCHA keys, no anonymous-user cleanup, nothing to merge. Friends see counts only ("3 in, 1 maybe") by default, and the owner sees names. The owner may choose "Everyone with the link sees who's coming" for a friend group; friends are told which before answering, and each answer keeps the setting it was given under, so turning names on later never shows earlier answers. Plans and answers are deleted 1 day after the event.
+- Built 2026-10-20 (local only): `015_friend_plans.sql` (create through `create_friend_plan`, answers through `get_friend_plan`, `respond_to_friend_plan` and `remove_friend_plan_response`, curators have no access, rate limits, consent on every answer, deletion by `apply_retention`), the owner card on Going events (`components/event/invite-friends.tsx`) and the friend page `/plan/<token>` (`src/app/plan/[token].tsx`). Owners are not told when someone answers (no push notifications).
 
 ## 14. Profile & settings (You) — Decided (2026-10-02)
 

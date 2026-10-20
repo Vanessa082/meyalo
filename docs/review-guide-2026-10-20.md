@@ -20,6 +20,7 @@ Some of this work was written by other Claude sessions in the same folder
 
 ## What was built (most recent first)
 
+0. **Plans with friends** (not committed yet when this was written): `015_friend_plans.sql` and `supabase/tests/12_friend_plans.test.sql`, the owner card (`src/components/event/invite-friends.tsx`), the friend page (`src/app/plan/[token].tsx`, not indexed by search engines). Owners must be signed in; friends answer with a first name through the link only; counts only unless the owner shows names, and earlier answers stay private when names are turned on. Also removes the old 004 `respond_to_friend_plan(uuid, text, text)`, which took answers without consent.
 1. **Optional accounts** (spec: `docs/product-decisions.md`, "Spec: accounts"). Email code sign-in, backup of plans and profile across phones, account deletion with an anonymous record, retention jobs. Apple sign-in written but never run; Google not built.
 2. **After an event ends**: ended banner, "Did you go?", private notes, "How was it?" reminder, Past in My Month.
 3. **Consent and notifications**: consent box at every report and suggestion, age group, Privacy and notifications screen, permission explanations, local reminders.
@@ -45,6 +46,7 @@ Answer each in your own words before merging to `main`.
 6. A report is sent while signed in. What links it to the account, and what happens to it when the account is deleted?
 7. What stops one signed-in person from reading another person's plans? Name the mechanism and the test that proves it.
 8. Which parts were never run on a real phone, and what could go wrong there?
+9. A friend answered while names were hidden, then the owner shows names. Is that friend's name visible to others? Why, and where is it decided?
 
 ## Not verified
 

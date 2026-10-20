@@ -1,6 +1,7 @@
 import { LANGUAGE_STORAGE_KEY } from '../i18n/language.ts';
 import { AGE_GROUP_KEY } from './age-group-setting.ts';
 import { ENTRY_KEY, PROFILE_KEY } from './discovery-profile-store.ts';
+import { FRIEND_ANSWERS_KEY } from './friend-answers-store.ts';
 import { HIDDEN_EVENTS_KEY } from './hidden-events-store.ts';
 import type { KeyValueStore } from './key-value-store.ts';
 import { LEARNING_SETTING_KEY } from './learning-setting.ts';
@@ -30,6 +31,7 @@ export const DEVICE_DATA_KEYS: readonly string[] = [
   LEARNING_SETTING_KEY,
   AGE_GROUP_KEY,
   REMINDER_SETTING_KEY,
+  FRIEND_ANSWERS_KEY,
   LANGUAGE_STORAGE_KEY,
   QUERY_CACHE_KEY,
 ];

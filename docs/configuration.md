@@ -60,7 +60,7 @@ Status on 19 October 2026: `.env` has only the Supabase URL and key.
 ### Web and domain
 | Variable / item | Your action |
 |---|---|
-| `EXPO_PUBLIC_APP_BASE_URL` | Choose `https://<name>.expo.app` or a domain. A change needs a new native build |
+| `EXPO_PUBLIC_APP_BASE_URL` | Choose `https://<name>.expo.app` or a domain. A change needs a new native build. Required for invites from phones: without it, plans with friends can be shared only from the website |
 | Hosting and daily rebuild | Choose the host; rebuild daily so link previews stay fresh |
 | `EXPO_PUBLIC_PRIVACY_POLICY_URL`, `EXPO_PUBLIC_TERMS_URL` | `<APP_BASE_URL>/privacy` and `/terms` |
 | Legal placeholders | Operator name, legal form, registration number, address, contact email, response time, retention periods (`src/content/legal/*.ts`); lawyer review |

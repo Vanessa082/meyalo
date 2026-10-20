@@ -25,6 +25,7 @@ describe('clear data on this phone', () => {
       'meyalo.learnFromActivity.v1',
       'meyalo.ageGroup.v1',
       'meyalo.reminders.v1',
+      'meyalo.friendAnswers.v1',
       'meyalo.locale.v1',
       'meyalo.queryCache',
     ]) {
