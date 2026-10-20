@@ -5,7 +5,13 @@ import {
   createEventRepository,
   isEventRepositoryError,
 } from '@/services/event-repository';
-import type { EventCardData } from '@/types/event.type';
+import type {
+  EventCardData,
+  EventCursor,
+  EventSearchInput,
+  EventSort,
+} from '@/types/event.type';
+import type { EventTranslation } from './event-repository';
 
 /** The app's single event repository, on the app's Supabase session. */
 export const eventRepository = createEventRepository(supabase);
@@ -13,6 +19,7 @@ export const eventRepository = createEventRepository(supabase);
 export const eventCuration = createEventCuration(eventRepository);
 
 const CONSUMER_PAGE_SIZE = 50;
+const EXPLORE_PAGE_SIZE = 20;
 
 /**
  * Consumer reads. Always published and confirmed events, even when a curator
@@ -25,7 +32,7 @@ export const EventService = {
       sort: 'start_asc',
       limit: CONSUMER_PAGE_SIZE,
     });
-    return page.items.map((event) => toEventCard(event));
+    return page.items.map(toEventCard);
   },
 
   async fetchEventById(id: string): Promise<EventCardData | null> {
@@ -41,5 +48,27 @@ export const EventService = {
       }
       throw error;
     }
+  },
+
+  translateEvent(id: string, target: 'en' | 'fr'): Promise<EventTranslation> {
+    return eventRepository.translate(id, target);
+  },
+
+  /** One page of Explore results; the first page carries the total. */
+  async searchEvents(
+    input: EventSearchInput,
+    sort: EventSort,
+    cursor: EventCursor | null,
+  ): Promise<{
+    items: EventCardData[];
+    nextCursor: EventCursor | null;
+    total?: number;
+  }> {
+    const page = await eventRepository.searchPublished(input, {
+      sort,
+      cursor,
+      limit: EXPLORE_PAGE_SIZE,
+    });
+    return { ...page, items: page.items.map(toEventCard) };
   },
 };

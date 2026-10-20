@@ -1,15 +1,10 @@
 import type { ReactNode } from 'react';
-import {
-  Pressable,
-  type StyleProp,
-  StyleSheet,
-  View,
-  type ViewStyle,
-} from 'react-native';
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Radius, Shadows, Spacing } from '@/theme';
 import type { ThemeColors } from '@/theme/colors';
+import { PressableScale } from './motion';
 
 export type CardVariant = 'flat' | 'elevated' | 'outlined';
 export type CardPadding = 'none' | 'sm' | 'md' | 'lg';
@@ -85,13 +80,13 @@ export function Card({
 
   if (onPress) {
     return (
-      <Pressable
+      <PressableScale
         onPress={onPress}
         accessibilityRole="button"
-        style={({ pressed }) => [cardStyle, pressed && styles.pressed]}
+        style={cardStyle}
       >
         {children}
-      </Pressable>
+      </PressableScale>
     );
   }
 
@@ -102,9 +97,5 @@ const styles = StyleSheet.create({
   base: {
     borderRadius: Radius.card,
     overflow: 'hidden',
-  },
-  pressed: {
-    opacity: 0.96,
-    transform: [{ scale: 0.995 }],
   },
 });

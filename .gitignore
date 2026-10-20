@@ -42,3 +42,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Built by scripts/build-event-previews.mjs (pnpm build:web); never commit.
+src/generated/event-previews.json

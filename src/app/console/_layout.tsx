@@ -8,7 +8,7 @@ import {
   LoadingState,
 } from '@/components/console/console-ui';
 import { Button } from '@/components/ui/button';
-import { ThemeText } from '@/components/ui/theme-text';
+import { Text } from '@/components/ui/text';
 import { useCuratorSession } from '@/hooks/use-curator-session';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -42,11 +42,13 @@ export default function ConsoleLayout() {
         style={{ backgroundColor: colors.background }}
         contentContainerStyle={styles.centered}
       >
-        <ThemeText variant="title">Not a curator account</ThemeText>
-        <ThemeText variant="caption" themeColor="textMuted">
+        <Text variant="headline" accessibilityRole="header">
+          Not a curator account
+        </Text>
+        <Text variant="footnote" tone="muted">
           Signed in as {curator.session.user.email}. This account does not have
           the curator role, so the database will not let it change events.
-        </ThemeText>
+        </Text>
         <Button
           title="Sign out"
           variant="outline"
@@ -62,9 +64,9 @@ export default function ConsoleLayout() {
         headerShown: true,
         headerRight: () => (
           <View style={styles.headerRight}>
-            <ThemeText variant="caption" themeColor="textMuted">
+            <Text variant="footnote" tone="muted">
               {curator.session?.user.email}
-            </ThemeText>
+            </Text>
             <Button
               title="Sign out"
               variant="ghost"
@@ -106,10 +108,12 @@ function SignIn({
       style={{ backgroundColor: colors.background }}
       contentContainerStyle={styles.centered}
     >
-      <ThemeText variant="title">Meyalo curation</ThemeText>
-      <ThemeText variant="caption" themeColor="textMuted">
+      <Text variant="headline" accessibilityRole="header">
+        Meyalo curation
+      </Text>
+      <Text variant="footnote" tone="muted">
         Curator accounts only.
-      </ThemeText>
+      </Text>
       {error ? <Banner tone="error" message={error} /> : null}
       <Field
         label="Email"

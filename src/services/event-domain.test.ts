@@ -4,13 +4,13 @@ import { makeEvent } from '../test-support/event-fixtures.ts';
 import type { PublicationStatus } from '../types/event.type.ts';
 import {
   allowedPublicationChanges,
+  checkInputProblem,
   completenessIssues,
   freshness,
   isPubliclyVisible,
   PUBLICATION_STATUSES,
   PUBLICATION_TRANSITIONS,
   publicationChangeBlocker,
-  verificationChangeBlocker,
 } from './event-domain.ts';
 
 const NOW = new Date('2026-10-03T12:00:00.000Z');
@@ -98,21 +98,48 @@ describe('publication transitions', () => {
   });
 });
 
-describe('verificationChangeBlocker', () => {
-  it('allows re-checks and blocks un-reviewing a published event', () => {
-    const published = makeEvent({
-      publicationStatus: 'published',
-      verificationState: 'source_confirmed',
-    });
+describe('checkInputProblem', () => {
+  const base = {
+    eventId: '1f6c6fa9-ce6f-4848-bc92-13723ff49dca',
+    state: 'source_confirmed' as const,
+    method: 'official_site' as const,
+    evidenceUrl: 'https://organizer.example/event',
+    redFlags: [],
+    chargesFee: false,
+    notes: null,
+  };
+
+  it('accepts a clean confirmation and a rejection with flags', () => {
+    assert.equal(checkInputProblem(base), null);
     assert.equal(
-      verificationChangeBlocker(published, 'source_confirmed'),
+      checkInputProblem({
+        ...base,
+        state: 'unreviewed',
+        redFlags: ['lookalike_domain'],
+      }),
       null,
     );
-    assert.ok(verificationChangeBlocker(published, 'unreviewed'));
-    assert.ok(verificationChangeBlocker(makeEvent(), 'unreviewed'));
+  });
+
+  it('mirrors the database rules with messages a curator can act on', () => {
+    assert.match(
+      checkInputProblem({ ...base, redFlags: ['guaranteed_award'] }) ?? '',
+      /red flag/i,
+    );
+    assert.match(
+      checkInputProblem({ ...base, state: 'organizer_confirmed' }) ?? '',
+      /organizer/i,
+    );
+    assert.match(
+      checkInputProblem({ ...base, evidenceUrl: 'http://x.example' }) ?? '',
+      /https/i,
+    );
+    assert.match(
+      checkInputProblem({ ...base, notes: 'x'.repeat(2001) }) ?? '',
+      /2000/,
+    );
   });
 });
-
 describe('freshness', () => {
   const base = makeEvent({
     publicationStatus: 'published',

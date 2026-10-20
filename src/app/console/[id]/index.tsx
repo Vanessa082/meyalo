@@ -2,6 +2,8 @@ import * as Linking from 'expo-linking';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { CheckForm } from '@/components/console/check-form';
+import { CheckHistory } from '@/components/console/check-history';
 import {
   Banner,
   describeError,
@@ -10,20 +12,18 @@ import {
   Row,
   Section,
 } from '@/components/console/console-ui';
+import { CoverImageForm } from '@/components/console/cover-image-form';
 import {
   EventStatusBadges,
   eventTime,
   freshnessBadge,
 } from '@/components/console/event-status';
 import { Button } from '@/components/ui/button';
-import { ThemeText } from '@/components/ui/theme-text';
-import {
-  useChangePublication,
-  useCurationEvent,
-  useRecordVerification,
-} from '@/hooks/use-curation';
+import { Text } from '@/components/ui/text';
+import { useChangePublication, useCurationEvent } from '@/hooks/use-curation';
 import { useCuratorSession } from '@/hooks/use-curator-session';
 import { useTheme } from '@/hooks/use-theme';
+import { translate } from '@/i18n';
 import {
   COMPLETENESS_LABELS,
   completenessIssues,
@@ -33,18 +33,11 @@ import {
   publicationChangeBlocker,
   SOURCE_TYPE_LABELS,
   VERIFICATION_LABELS,
-  verificationChangeBlocker,
 } from '@/services/event-domain';
-import { buildPriceLabel } from '@/services/event-mapping';
+import { buildPriceLabel, type Localizer } from '@/services/event-mapping';
 import { httpsHost } from '@/services/url';
 import { instantToWallTime } from '@/services/zoned-time';
-import type { Event, VerificationState } from '@/types/event.type';
-
-const VERIFICATION_ACTIONS: { to: VerificationState; label: string }[] = [
-  { to: 'source_confirmed', label: 'Record source check' },
-  { to: 'organizer_confirmed', label: 'Record organizer confirmation' },
-  { to: 'unreviewed', label: 'Mark unreviewed' },
-];
+import type { Event } from '@/types/event.type';
 
 export default function CurationEventScreen() {
   const colors = useTheme();
@@ -53,7 +46,6 @@ export default function CurationEventScreen() {
   const query = useCurationEvent(id ?? '');
   const event = query.data;
   const publication = useChangePublication(event);
-  const verification = useRecordVerification(event);
   const { userId } = useCuratorSession();
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -62,8 +54,8 @@ export default function CurationEventScreen() {
     return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
   }
 
-  const actionError = publication.error ?? verification.error;
-  const busy = publication.isPending || verification.isPending;
+  const actionError = publication.error;
+  const busy = publication.isPending;
   const issues = completenessIssues(event);
   const stale = freshnessBadge(event);
   const sourceHost = httpsHost(event.sourceUrl);
@@ -83,9 +75,9 @@ export default function CurationEventScreen() {
       <Stack.Screen options={{ title: event.title }} />
 
       <View style={styles.heading}>
-        <ThemeText variant="h2" selectable>
+        <Text variant="title2" accessibilityRole="header" selectable>
           {event.title}
-        </ThemeText>
+        </Text>
         <EventStatusBadges event={event} />
         <View style={styles.actions}>
           <Button
@@ -106,7 +98,6 @@ export default function CurationEventScreen() {
             onPress={() => {
               setNotice(null);
               publication.reset();
-              verification.reset();
               query.refetch();
             }}
           />
@@ -122,12 +113,12 @@ export default function CurationEventScreen() {
       ) : null}
 
       <Section title="Publication">
-        <ThemeText variant="caption">
+        <Text variant="footnote">
           Currently {PUBLICATION_LABELS[event.publicationStatus].toLowerCase()}.
           {event.publicationStatus === 'published'
             ? ' Visible to the public.'
             : ' Not visible to the public.'}
-        </ThemeText>
+        </Text>
         <View style={styles.actions}>
           {PUBLICATION_TRANSITIONS[event.publicationStatus].map((to) => {
             const blocker = publicationChangeBlocker(event, to);
@@ -143,7 +134,6 @@ export default function CurationEventScreen() {
                   }
                   onPress={() => {
                     setNotice(null);
-                    verification.reset();
                     publication.mutate(to, {
                       onSuccess: (saved) =>
                         setNotice(
@@ -153,17 +143,17 @@ export default function CurationEventScreen() {
                   }}
                 />
                 {blocker ? (
-                  <ThemeText variant="caption" themeColor="textMuted">
+                  <Text variant="footnote" tone="muted">
                     {blocker}
-                  </ThemeText>
+                  </Text>
                 ) : null}
               </View>
             );
           })}
           {PUBLICATION_TRANSITIONS[event.publicationStatus].length === 0 ? (
-            <ThemeText variant="caption" themeColor="textMuted">
+            <Text variant="footnote" tone="muted">
               No further status changes.
-            </ThemeText>
+            </Text>
           ) : null}
         </View>
       </Section>
@@ -210,55 +200,33 @@ export default function CurationEventScreen() {
           label="From submission"
           value={event.sourceSubmissionId ?? 'Not from a submission'}
         />
-        <View style={styles.actions}>
-          {VERIFICATION_ACTIONS.map(({ to, label }) => {
-            const blocker = verificationChangeBlocker(event, to);
-            return (
-              <View key={to} style={styles.action}>
-                <Button
-                  title={label}
-                  variant="outline"
-                  size="small"
-                  disabled={busy || blocker !== null}
-                  loading={
-                    verification.isPending && verification.variables === to
-                  }
-                  onPress={() => {
-                    setNotice(null);
-                    publication.reset();
-                    verification.mutate(to, {
-                      onSuccess: (saved) =>
-                        setNotice(
-                          `Saved. Verification is now "${VERIFICATION_LABELS[saved.verificationState]}".`,
-                        ),
-                    });
-                  }}
-                />
-                {blocker ? (
-                  <ThemeText variant="caption" themeColor="textMuted">
-                    {blocker}
-                  </ThemeText>
-                ) : null}
-              </View>
-            );
-          })}
-        </View>
-        <ThemeText variant="caption" themeColor="textMuted">
-          Record a check only after comparing title, date and time, place,
-          format and links with the source.
-        </ThemeText>
+      </Section>
+
+      <Section title="Image">
+        <CoverImageForm event={event} />
+      </Section>
+
+      <Section title="Record a check">
+        <CheckForm event={event} />
+      </Section>
+
+      <Section title="Checks and reports">
+        <CheckHistory
+          eventId={event.id}
+          curatorNames={userId ? { [userId]: 'You' } : {}}
+        />
       </Section>
 
       <Section title="Missing or unconfirmed details">
         {issues.length === 0 ? (
-          <ThemeText variant="caption" themeColor="textMuted">
+          <Text variant="footnote" tone="muted">
             Nothing missing.
-          </ThemeText>
+          </Text>
         ) : (
           issues.map((issue) => (
-            <ThemeText key={issue} variant="caption">
+            <Text key={issue} variant="footnote">
               • {COMPLETENESS_LABELS[issue]}
-            </ThemeText>
+            </Text>
           ))
         )}
       </Section>
@@ -271,20 +239,26 @@ export default function CurationEventScreen() {
 function LinkValue({ url, host }: { url: string; host: string | null }) {
   return (
     <View style={styles.link}>
-      <ThemeText variant="captionBold">
+      <Text variant="footnote" weight="bold">
         {host ?? 'Not a valid https link'}
-      </ThemeText>
-      <ThemeText
-        variant="caption"
-        themeColor="textLink"
+      </Text>
+      <Text
+        variant="footnote"
+        tone="primary"
         selectable
         onPress={host ? () => Linking.openURL(url) : undefined}
       >
         {url}
-      </ThemeText>
+      </Text>
     </View>
   );
 }
+
+/** The console is English only, like the rest of its copy. */
+const CONSOLE_I18N: Localizer = {
+  language: 'en',
+  t: (key, params) => translate(key, params, 'en'),
+};
 
 function EventDetails({ event }: { event: Event }) {
   return (
@@ -313,7 +287,7 @@ function EventDetails({ event }: { event: Event }) {
         label="Online access"
         value={event.virtualAccessType ?? 'Not stated'}
       />
-      <Row label="Price" value={buildPriceLabel(event)} />
+      <Row label="Price" value={buildPriceLabel(event, CONSOLE_I18N)} />
       <Row
         label="Languages"
         value={

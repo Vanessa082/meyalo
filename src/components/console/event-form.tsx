@@ -13,6 +13,7 @@ import {
 import type { EventFieldErrors } from '@/services/event-validation';
 import type { EventFormValues, EventTaxonomy } from '@/types/event.type';
 import { Banner, Choices, describeError, Field, Section } from './console-ui';
+import { VenueSearch } from './venue-search';
 
 type TextField = Exclude<
   keyof EventFormValues,
@@ -93,6 +94,11 @@ export function EventForm({
         />
       ) : null}
 
+      <Banner
+        tone="info"
+        message="Only events that promote growth: they build skills, livelihoods, health, opportunity or community. Arts, sport and faith events qualify when they have that angle (a music workshop, a youth sport development day, a church entrepreneurship conference). Not parties or nightlife."
+      />
+
       <Section title="Event">
         <Field label="Title" {...text('title')} />
         <Field
@@ -161,6 +167,19 @@ export function EventForm({
           {...text('venueName')}
         />
         <Field label="Address (optional)" {...text('address')} />
+        <VenueSearch
+          suggestedQuery={[values.venueName, values.address, values.city]
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .join(', ')}
+          onPick={(place) =>
+            setValues((current) => ({
+              ...current,
+              latitude: place.latitude.toFixed(6),
+              longitude: place.longitude.toFixed(6),
+            }))
+          }
+        />
         <Field label="Latitude (optional)" {...text('latitude')} />
         <Field label="Longitude (optional)" {...text('longitude')} />
         <Field

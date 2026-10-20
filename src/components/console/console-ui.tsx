@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Button } from '@/components/ui/button';
-import { ThemeText } from '@/components/ui/theme-text';
+import { Text } from '@/components/ui/text';
 import { useTheme } from '@/hooks/use-theme';
 import {
   EventRuleError,
@@ -24,6 +24,7 @@ const KIND_MESSAGES: Record<EventRepositoryErrorKind, string> = {
   invalid_input: 'The database rejected the values.',
   unauthorized: 'This account is not allowed to do that.',
   conflict: 'Someone changed this event after you loaded it. Reload it first.',
+  rate_limited: 'Too many requests in a short time. Try again in a while.',
   unavailable: 'The event database could not be reached.',
 };
 
@@ -55,9 +56,9 @@ export function Section({
         { backgroundColor: colors.surface, borderColor: colors.border },
       ]}
     >
-      <ThemeText variant="captionBold" themeColor="textMuted">
+      <Text variant="footnote" weight="bold" tone="muted">
         {title.toUpperCase()}
-      </ThemeText>
+      </Text>
       {children}
     </View>
   );
@@ -66,14 +67,14 @@ export function Section({
 export function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <View style={styles.row}>
-      <ThemeText variant="caption" themeColor="textMuted" style={styles.label}>
+      <Text variant="footnote" tone="muted" style={styles.label}>
         {label}
-      </ThemeText>
+      </Text>
       <View style={styles.value}>
         {typeof value === 'string' ? (
-          <ThemeText variant="caption" selectable>
+          <Text variant="footnote" selectable>
             {value}
-          </ThemeText>
+          </Text>
         ) : (
           value
         )}
@@ -100,9 +101,9 @@ export function Badge({
   }[tone];
   return (
     <View style={[styles.badge, { borderColor: color }]}>
-      <ThemeText variant="captionBold" style={{ color }}>
+      <Text variant="footnote" weight="bold" style={{ color }}>
         {label}
-      </ThemeText>
+      </Text>
     </View>
   );
 }
@@ -126,9 +127,9 @@ export function Banner({
       accessibilityRole="alert"
       style={[styles.banner, { borderColor: color }]}
     >
-      <ThemeText variant="caption" style={{ color }}>
+      <Text variant="footnote" style={{ color }}>
         {message}
-      </ThemeText>
+      </Text>
     </View>
   );
 }
@@ -138,9 +139,9 @@ export function LoadingState({ label }: { label: string }) {
   return (
     <View style={styles.state}>
       <ActivityIndicator color={colors.primary} />
-      <ThemeText variant="caption" themeColor="textMuted">
+      <Text variant="footnote" tone="muted">
         {label}
-      </ThemeText>
+      </Text>
     </View>
   );
 }
@@ -170,9 +171,9 @@ export function ErrorState({
 export function EmptyState({ message }: { message: string }) {
   return (
     <View style={styles.state}>
-      <ThemeText variant="caption" themeColor="textMuted">
+      <Text variant="footnote" tone="muted">
         {message}
-      </ThemeText>
+      </Text>
     </View>
   );
 }
@@ -186,7 +187,9 @@ export function Field({
   const colors = useTheme();
   return (
     <View style={styles.field}>
-      <ThemeText variant="captionBold">{label}</ThemeText>
+      <Text variant="footnote" weight="bold">
+        {label}
+      </Text>
       <TextInput
         placeholderTextColor={colors.textMuted}
         autoCapitalize="none"
@@ -203,14 +206,14 @@ export function Field({
         ]}
       />
       {hint && !error ? (
-        <ThemeText variant="caption" themeColor="textMuted">
+        <Text variant="footnote" tone="muted">
           {hint}
-        </ThemeText>
+        </Text>
       ) : null}
       {error ? (
-        <ThemeText variant="caption" themeColor="error">
+        <Text variant="footnote" tone="error">
           {error}
-        </ThemeText>
+        </Text>
       ) : null}
     </View>
   );
@@ -232,7 +235,9 @@ export function Choices<T extends string>({
   const colors = useTheme();
   return (
     <View style={styles.field}>
-      <ThemeText variant="captionBold">{label}</ThemeText>
+      <Text variant="footnote" weight="bold">
+        {label}
+      </Text>
       <View style={styles.choices}>
         {options.map((option) => {
           const active = selected.includes(option.value);
@@ -251,20 +256,17 @@ export function Choices<T extends string>({
                 },
               ]}
             >
-              <ThemeText
-                variant="caption"
-                themeColor={active ? 'primary' : 'text'}
-              >
+              <Text variant="footnote" tone={active ? 'primary' : 'default'}>
                 {option.label}
-              </ThemeText>
+              </Text>
             </Pressable>
           );
         })}
       </View>
       {error ? (
-        <ThemeText variant="caption" themeColor="error">
+        <Text variant="footnote" tone="error">
           {error}
-        </ThemeText>
+        </Text>
       ) : null}
     </View>
   );

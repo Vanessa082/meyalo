@@ -6,17 +6,50 @@
  * the app. Never put secrets (service-role keys, provider API keys) here.
  */
 
+import { httpsHost } from '../services/url.ts';
+
 function present(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
 }
+
+export const DEFAULT_GEOCODER_URL = 'https://nominatim.openstreetmap.org';
 
 export const publicEnv = {
   supabaseUrl: present(process.env.EXPO_PUBLIC_SUPABASE_URL),
   supabaseAnonKey: present(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY),
   appBaseUrl: normalizeBaseUrl(process.env.EXPO_PUBLIC_APP_BASE_URL),
   googleMapsApiKey: present(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY),
+  privacyPolicyUrl: httpsOnly(process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL),
+  termsUrl: httpsOnly(process.env.EXPO_PUBLIC_TERMS_URL),
+  geocoderUrl: geocoderBaseUrl(process.env.EXPO_PUBLIC_GEOCODER_URL),
+  /** "true" once the translate-event function has a provider key
+   *  (docs/environment.md). Until then the Translate action is hidden. */
+  translationEnabled: process.env.EXPO_PUBLIC_TRANSLATION_ENABLED === 'true',
 };
+
+/**
+ * Venue search for curators. Unset uses the public OpenStreetMap Nominatim
+ * service; "off" disables it (the usage policy requires being able to switch
+ * it off on request); any other https origin points at another Nominatim.
+ */
+export function geocoderBaseUrl(raw: string | undefined): string | null {
+  const value = present(raw);
+  if (!value) return DEFAULT_GEOCODER_URL;
+  if (value.toLowerCase() === 'off') return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Legal links are shown only once a real https page is configured. */
+function httpsOnly(raw: string | undefined): string | undefined {
+  const value = present(raw);
+  return value && httpsHost(value) ? value : undefined;
+}
 
 export function requireSupabaseConfig(): { url: string; anonKey: string } {
   if (!publicEnv.supabaseUrl || !publicEnv.supabaseAnonKey) {

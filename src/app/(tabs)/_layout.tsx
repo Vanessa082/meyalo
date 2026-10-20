@@ -1,105 +1,128 @@
 /**
  * TabsLayout
  *
- * "For You" tab uses the Meyalo brand mark (teal M icon) instead of a
- * generic home icon — it IS the app identity.
+ * All five tab icons are one family: lucide line icons at the same size and
+ * stroke, tinted by the theme's active and inactive colours, so they match in
+ * light and dark. The brand mark lives in the header logo, not the tab bar.
  */
-import { Image } from 'expo-image';
 import { Tabs } from 'expo-router';
-import { Calendar, Compass, MapPin, User } from 'lucide-react-native';
+import {
+  Calendar,
+  Compass,
+  House,
+  type LucideIcon,
+  MapPin,
+  User,
+} from 'lucide-react-native';
 import type { ColorValue } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppHeader } from '@/components/ui/app-header';
 import { useTheme } from '@/hooks/use-theme';
 import { t } from '@/i18n';
 import { useAppLanguage } from '@/i18n/locale-provider';
+import { Fonts, Spacing } from '@/theme';
 
-function MeyaloMarkIcon({ focused }: { color: ColorValue; focused: boolean }) {
-  // The mark is always teal when active, muted grey when inactive.
-  return (
-    <Image
-      source={
-        focused
-          ? require('../../../assets/brand/mark/meyalo-mark-teal-64.png')
-          : require('../../../assets/brand/mark/meyalo-mark-teal-64.png')
-      }
-      style={{
-        width: 26,
-        height: 26,
-        opacity: focused ? 1 : 0.4,
-      }}
-      contentFit="contain"
-    />
+const ICON_SIZE = 24;
+const TAB_BAR_HEIGHT = 68;
+
+/** The five tabs. Every other screen here is reached from them and shows
+ *  the tab bar too, without a tab button of its own. */
+const TAB_ROOTS = new Set(['index', 'explore', 'around-you', 'month', 'you']);
+const HIDDEN_SCREENS = [
+  'event/[id]',
+  'submit/index',
+  'submit/[id]',
+  'privacy',
+  'terms',
+  'delete-account',
+  'how-we-verify',
+  'hidden-events',
+  'privacy-settings',
+];
+const ICON_STROKE = 1.8;
+
+function tabIcon(Icon: LucideIcon) {
+  return ({ color }: { color: ColorValue }) => (
+    <Icon size={ICON_SIZE} color={color} strokeWidth={ICON_STROKE} />
   );
 }
 
 export default function TabsLayout() {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   useAppLanguage();
 
   return (
     <Tabs
+      // Back returns to the screen you came from, not always to For You.
+      backBehavior="history"
       screenOptions={{
+        headerShown: true,
+        header: ({ navigation, route }) => (
+          <AppHeader
+            canGoBack={!TAB_ROOTS.has(route.name) && navigation.canGoBack()}
+            onBack={() => navigation.goBack()}
+          />
+        ),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
           backgroundColor: colors.background,
           borderTopColor: colors.border,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 6,
+          // Icon (24) + label line (16) + padding, plus the home-indicator
+          // inset, so labels are never clipped on any phone.
+          height: TAB_BAR_HEIGHT + insets.bottom,
+          paddingTop: Spacing.sm,
+          paddingBottom: Spacing.sm + insets.bottom,
         },
+        // Five labels share the width: no side padding, so even a 320 px
+        // screen fits the longest (57 px at 12 px).
+        tabBarItemStyle: { paddingHorizontal: 0 },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          fontFamily: Fonts.semiBold,
+          fontSize: 12,
+          lineHeight: 16,
         },
-        headerStyle: { backgroundColor: colors.background },
-        headerTitleStyle: { color: colors.text },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: t('tabs.forYou'),
-          tabBarIcon: ({ color, focused }) => (
-            <MeyaloMarkIcon color={color} focused={focused} />
-          ),
+          tabBarIcon: tabIcon(House),
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
           title: t('tabs.explore'),
-          tabBarIcon: ({ color }) => (
-            <Compass size={24} color={color} strokeWidth={1.8} />
-          ),
+          tabBarIcon: tabIcon(Compass),
         }}
       />
       <Tabs.Screen
         name="around-you"
         options={{
           title: t('tabs.aroundYou'),
-          tabBarIcon: ({ color }) => (
-            <MapPin size={24} color={color} strokeWidth={1.8} />
-          ),
+          tabBarIcon: tabIcon(MapPin),
         }}
       />
       <Tabs.Screen
         name="month"
         options={{
           title: t('tabs.month'),
-          tabBarIcon: ({ color }) => (
-            <Calendar size={24} color={color} strokeWidth={1.8} />
-          ),
+          tabBarIcon: tabIcon(Calendar),
         }}
       />
       <Tabs.Screen
         name="you"
         options={{
           title: t('tabs.you'),
-          tabBarIcon: ({ color }) => (
-            <User size={24} color={color} strokeWidth={1.8} />
-          ),
+          tabBarIcon: tabIcon(User),
         }}
       />
+      {HIDDEN_SCREENS.map((name) => (
+        <Tabs.Screen key={name} name={name} options={{ href: null }} />
+      ))}
     </Tabs>
   );
 }

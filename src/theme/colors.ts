@@ -1,124 +1,150 @@
 export const Palette = {
-  teal: '#087F73',
-  tealLight: '#0B9688',
-  tealSoft: '#E8F2F0',
-  ink: '#142428',
-  inkLight: '#1C3136',
-  canvas: '#F7F9F7',
-  mist: '#E8F2F0',
+  // Black, white and one brand colour: blue (owner's decision, 2026-10-19,
+  // "like Meta's apps"). Change the brand here; names stay. See BRAND.md.
+  brand: '#1460D0',
+  brandPressed: '#124FB0',
+  brandSoft: '#E8F0FE',
+  /** The brand lightened to read on the dark theme (5.4:1 or more on every
+   *  dark surface). */
+  brandBright: '#5B9BFF',
+  brandBrightPressed: '#4C8DF6',
+  /** Neutral near-black: text on light, background on dark, app icon. */
+  ink: '#111312',
+  inkRaised: '#1B1D1C',
+  inkHigh: '#242625',
+  /** Light text on dark, and the lightest neutral surface. */
+  canvas: '#F5F5F5',
+  /** Neutral greys, no tint. */
+  gray100: '#F0F0F0',
+  gray200: '#E4E4E4',
+  gray300: '#D9D9D9',
+  gray700: '#3A3B3B',
   white: '#FFFFFF',
+  // Status.
   amber: '#C76A10',
-  amberLight: '#FF9A3C',
+  amberText: '#9A4F08',
+  amberSoft: '#FBF0E4',
+  amberLight: '#F2A65A',
   critical: '#B42318',
+  criticalSoft: '#FDECEA',
   criticalLight: '#FDA29B',
-  grayMutedLight: '#5C6B6F',
-  grayMutedDark: '#A5B2B5',
-  grayDisabledLight: '#D0D5DD',
-  grayDisabledDark: '#344054',
-  borderLight: '#E8F2F0',
-  borderDark: '#2C3A3D',
-};
+  grayMutedLight: '#5E6160',
+  grayMutedDark: '#A3A7A4',
+} as const;
 
+/**
+ * Semantic colour roles. Text roles are checked against their backgrounds in
+ * contrast.test.ts; add a pair there when adding a text role.
+ *
+ * The brand colour (blue) is the action and selection colour. On light,
+ * buttons and selected chips are brand with white text, and it carries links
+ * and accents. On dark, the brand is too dark to read on ink, so brandBright
+ * takes those roles, with ink text on its fills. Highlights (why an event was
+ * picked, the verified badge) use the same colour: one brand colour,
+ * everything else black, white and grey. Amber marks time-sensitive or
+ * changed information, critical marks errors and cancellations. Status is
+ * never carried by colour alone.
+ */
 export const Colors = {
   light: {
-    // Brand
-    primary: Palette.teal,
-    primaryPressed: Palette.tealLight,
-    primarySoft: Palette.tealSoft,
+    primary: Palette.brand,
+    primaryPressed: Palette.brandPressed,
+    primarySoft: Palette.brandSoft,
+    /** Text on `actionPrimary` (the brand button). */
+    onPrimary: Palette.white,
+    /** Any selected chip, segment or filter: a brand pill. */
+    selected: Palette.brand,
+    onSelected: Palette.white,
+    /** The logo mark: brand on light, brandBright on dark. */
+    brandMark: Palette.brand,
 
-    // Backgrounds
-    background: Palette.canvas,
+    background: Palette.white,
     backgroundElement: Palette.white,
-    backgroundSelected: Palette.mist,
+    backgroundSelected: Palette.brandSoft,
     elevated: Palette.white,
     surface: Palette.white,
-    surfaceSecondary: '#F1F5F9',
+    surfaceSecondary: Palette.gray100,
+    surfaceSunken: Palette.gray100,
 
-    // Text
     text: Palette.ink,
-    textSecondary: Palette.teal,
+    textSecondary: Palette.gray700,
     textMuted: Palette.grayMutedLight,
     textInverse: Palette.white,
-    textLink: Palette.teal,
+    textLink: Palette.brand,
 
-    // Borders
-    border: Palette.borderLight,
-    borderSubtle: '#F2F4F7',
-    borderStrong: Palette.teal,
+    border: Palette.gray300,
+    borderSubtle: Palette.gray200,
+    borderStrong: Palette.brand,
+    focusRing: Palette.brand,
 
-    // Actions
-    actionPrimary: Palette.teal,
-    actionPrimaryPressed: Palette.tealLight,
-    actionDisabled: Palette.grayDisabledLight,
+    actionPrimary: Palette.brand,
+    actionPrimaryPressed: Palette.brandPressed,
+    actionDisabled: Palette.gray200,
 
-    // Status
-    success: Palette.teal,
+    success: Palette.brand,
+    successSoft: Palette.brandSoft,
     warning: Palette.amber,
+    warningText: Palette.amberText,
+    warningSoft: Palette.amberSoft,
     error: Palette.critical,
-    info: Palette.teal,
+    errorSoft: Palette.criticalSoft,
+    info: Palette.brand,
 
-    // Event category colors
-    categoryForYou: Palette.teal,
-    categoryExplore: Palette.ink,
-    categoryAroundYou: Palette.tealLight,
-    categorySaved: '#1570EF',
-    categoryChanged: Palette.amber,
-    categoryCancelled: Palette.critical,
+    /** Highlights: reasons, the verified badge, featured accents. */
+    highlight: Palette.brand,
+    highlightSoft: Palette.brandSoft,
+    onHighlight: Palette.white,
 
-    // Map markers
-    markerPrimary: Palette.teal,
-    markerSecondary: Palette.ink,
-    markerNeutral: Palette.grayMutedLight,
+    scrim: 'rgba(17, 19, 18, 0.4)',
   },
   dark: {
-    // Brand
-    primary: Palette.tealLight,
-    primaryPressed: Palette.teal,
-    primarySoft: Palette.inkLight,
+    // Neutral near-black with depth from lighter surfaces, one brand accent
+    // (the DICE / RA / Luma pattern). No tinted backgrounds.
+    primary: Palette.brandBright,
+    primaryPressed: Palette.brandBrightPressed,
+    primarySoft: Palette.inkHigh,
+    onPrimary: Palette.ink,
+    selected: Palette.brandBright,
+    onSelected: Palette.ink,
+    brandMark: Palette.brandBright,
 
-    // Backgrounds
     background: Palette.ink,
-    backgroundElement: Palette.inkLight,
-    backgroundSelected: '#24373C',
-    elevated: Palette.inkLight,
-    surface: Palette.inkLight,
-    surfaceSecondary: '#1E293B',
+    backgroundElement: Palette.inkRaised,
+    backgroundSelected: Palette.inkHigh,
+    elevated: Palette.inkRaised,
+    surface: Palette.inkRaised,
+    surfaceSecondary: Palette.inkHigh,
+    surfaceSunken: Palette.inkHigh,
 
-    // Text
     text: Palette.canvas,
-    textSecondary: Palette.mist,
+    textSecondary: '#CDD0CD',
     textMuted: Palette.grayMutedDark,
     textInverse: Palette.ink,
-    textLink: Palette.tealLight,
+    textLink: Palette.brandBright,
 
-    // Borders
-    border: Palette.borderDark,
-    borderSubtle: '#1F2A2D',
-    borderStrong: Palette.tealLight,
+    border: '#2E302F',
+    borderSubtle: '#232524',
+    borderStrong: Palette.brandBright,
+    focusRing: Palette.brandBright,
 
-    // Actions
-    actionPrimary: Palette.tealLight,
-    actionPrimaryPressed: Palette.teal,
-    actionDisabled: Palette.grayDisabledDark,
+    actionPrimary: Palette.brandBright,
+    actionPrimaryPressed: Palette.brandBrightPressed,
+    actionDisabled: '#2A2C2B',
 
-    // Status
-    success: Palette.tealLight,
+    success: Palette.brandBright,
+    successSoft: Palette.inkHigh,
     warning: Palette.amberLight,
+    warningText: Palette.amberLight,
+    warningSoft: '#33281C',
     error: Palette.criticalLight,
-    info: Palette.tealLight,
+    errorSoft: '#3A1F1D',
+    info: Palette.brandBright,
 
-    // Event category colors
-    categoryForYou: Palette.tealLight,
-    categoryExplore: Palette.canvas,
-    categoryAroundYou: Palette.teal,
-    categorySaved: '#53B1FD',
-    categoryChanged: Palette.amberLight,
-    categoryCancelled: Palette.criticalLight,
+    highlight: Palette.brandBright,
+    highlightSoft: Palette.inkHigh,
+    onHighlight: Palette.ink,
 
-    // Map markers
-    markerPrimary: Palette.tealLight,
-    markerSecondary: Palette.canvas,
-    markerNeutral: Palette.grayMutedDark,
+    scrim: 'rgba(0, 0, 0, 0.6)',
   },
 } as const;
 

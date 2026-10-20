@@ -20,6 +20,37 @@ export function lookupTranslation(
   return key;
 }
 
+export type TranslationParams = Record<string, string | number>;
+
+/** Replaces `{name}` placeholders. Unknown placeholders are left visible. */
+export function interpolate(
+  template: string,
+  params: TranslationParams | undefined,
+): string {
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in params ? String(params[name]) : match,
+  );
+}
+
+/**
+ * `{ language, t }` over the given catalogs, the shape `useTranslation()`
+ * returns. For code outside React: tests and build scripts.
+ */
+export function createLocalizer(
+  catalogs: Record<AppLanguage, unknown>,
+  language: AppLanguage,
+): {
+  language: AppLanguage;
+  t: (key: string, params?: TranslationParams) => string;
+} {
+  return {
+    language,
+    t: (key, params) =>
+      interpolate(lookupTranslation(catalogs, key, language), params),
+  };
+}
+
 function readPath(catalog: unknown, key: string): string | undefined {
   let current: unknown = catalog;
   for (const part of key.split('.')) {

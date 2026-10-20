@@ -5,13 +5,19 @@
  * before it sends a write.
  */
 import type {
+  CheckMethod,
+  CheckResult,
   Event,
+  EventCheckInput,
   EventFormat,
   PriceType,
   PublicationStatus,
+  RedFlag,
   SourceType,
   VerificationState,
 } from '../types/event.type.ts';
+import { CHECK_NOTES_MAX, RED_FLAGS } from '../types/event.type.ts';
+import { DAY_MS } from './zoned-time.ts';
 
 export const EVENT_FORMATS = [
   'in_person',
@@ -61,7 +67,6 @@ export const PUBLICATION_TRANSITIONS: Record<
   ended: [],
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 export const RECHECK_WINDOW_DAYS = 7;
 export const STALE_AFTER_DAYS = 14;
 
@@ -122,20 +127,61 @@ export function allowedPublicationChanges(
  * Why a verification change is not allowed, or null when it is.
  * Recording the same confirmed state again is a re-check, which is allowed.
  */
-export function verificationChangeBlocker(
-  event: Pick<Event, 'publicationStatus' | 'verificationState'>,
-  to: VerificationState,
-): string | null {
-  if (to === 'unreviewed') {
-    if (event.verificationState === 'unreviewed') {
-      return 'The event is already unreviewed.';
-    }
-    if (event.publicationStatus === 'published') {
-      return 'Unpublish the event before marking it unreviewed.';
-    }
+/**
+ * The rules record_check enforces (007_verification.sql), checked first so a
+ * curator gets a message to act on. The database stays the authority.
+ */
+export function checkInputProblem(input: EventCheckInput): string | null {
+  const confirming = input.state !== 'unreviewed';
+  if (!/^https:\/\//.test(input.evidenceUrl.trim())) {
+    return 'Evidence must be an https link to where you checked.';
+  }
+  if (
+    input.redFlags.some(
+      (flag) => !(RED_FLAGS as readonly string[]).includes(flag),
+    )
+  ) {
+    return 'Unknown red flag.';
+  }
+  if (confirming && input.redFlags.length > 0) {
+    return 'An event with a red flag cannot be confirmed. Reject it or clear the flag after checking again.';
+  }
+  if (
+    input.state === 'organizer_confirmed' &&
+    input.method !== 'organizer_contact'
+  ) {
+    return 'Organizer confirmation needs direct contact with the organizer.';
+  }
+  if ((input.notes?.length ?? 0) > CHECK_NOTES_MAX) {
+    return `Notes are longer than ${CHECK_NOTES_MAX} characters.`;
   }
   return null;
 }
+
+export const CHECK_METHOD_LABELS: Record<CheckMethod, string> = {
+  official_site: 'Official website',
+  official_social: 'Official social account',
+  organizer_contact: 'Contact with the organizer',
+  partner_feed: 'Partner feed',
+};
+
+export const RED_FLAG_LABELS: Record<RedFlag, string> = {
+  guaranteed_award: 'Guarantees a place, award or job',
+  payment_to_personal_account:
+    'Asks for payment to a personal account or MoMo number',
+  free_email_contact_only:
+    'Only a free email or WhatsApp contact for an official programme',
+  lookalike_domain: 'Website imitates a known organisation',
+  pressure_to_pay_or_decide: 'Pressure to pay or decide quickly',
+  asks_card_or_bank_details: 'Asks for card or bank details',
+};
+
+export const CHECK_RESULT_LABELS: Record<CheckResult, string> = {
+  confirmed: 'Saved. The event is confirmed.',
+  needs_second_review:
+    'Saved. This event charges a fee, so a second curator must confirm it before it can be published.',
+  rejected: 'Saved. The event is rejected and back in review.',
+};
 
 export type Freshness =
   | { kind: 'not_applicable' }

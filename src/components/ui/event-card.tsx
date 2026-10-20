@@ -2,34 +2,54 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
   Bookmark,
-  CheckCircle2,
+  EyeOff,
   Footprints,
   Globe,
   MapPin,
 } from 'lucide-react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { useSavedEventIds, useToggleSaveEvent } from '@/hooks/use-saved-events';
+import { useSaveToggle } from '@/components/event/use-save-toggle';
 import { useTheme } from '@/hooks/use-theme';
+import { useTranslation } from '@/i18n/locale-provider';
+import { dateParts, describeEventCard } from '@/services/event-mapping';
+import { Radius, Spacing, TouchTargets } from '@/theme';
 import type { EventCardData } from '@/types/event.type';
 import { Card } from './card';
-import { ThemeText } from './theme-text';
+import { Pop } from './motion';
+import { Text } from './text';
+import { VerifiedBadge } from './verified-badge';
 
 interface EventCardProps {
   event: EventCardData;
   onPress?: () => void;
+  /** Translated "why this fits" line, shown only for personalized picks. */
+  reasonText?: string;
+  /** Shows a "Not interested" button; For You hides the event. */
+  onNotInterested?: () => void;
 }
 
-export function EventCard({ event, onPress }: EventCardProps) {
+export function EventCard({
+  event,
+  onPress,
+  reasonText,
+  onNotInterested,
+}: EventCardProps) {
   const colors = useTheme();
+  const i18n = useTranslation();
+  const { t } = i18n;
+  const text = describeEventCard(event, i18n);
   const router = useRouter();
-  const { data: savedIds = [] } = useSavedEventIds();
-  const toggleSaveMutation = useToggleSaveEvent();
-
-  const isSaved = savedIds.includes(event.id);
+  const { isSaved, toggle } = useSaveToggle(event);
+  const date = dateParts(event.startsAt, event.timezone || null, i18n);
 
   const toggleSave = (e: { stopPropagation?: () => void }) => {
     e.stopPropagation?.();
-    toggleSaveMutation.mutate(event.id);
+    toggle();
+  };
+
+  const notInterested = (e: { stopPropagation?: () => void }) => {
+    e.stopPropagation?.();
+    onNotInterested?.();
   };
 
   const handleCardPress = () => {
@@ -41,12 +61,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
   };
 
   return (
-    <Card
-      variant="outlined"
-      padding="sm"
-      onPress={handleCardPress}
-      style={styles.card}
-    >
+    <Card variant="outlined" padding="sm" onPress={handleCardPress}>
       <View style={styles.cardContent}>
         {/* Left Image Thumbnail with Date Badge Overlay */}
         <View style={styles.imageContainer}>
@@ -54,6 +69,8 @@ export function EventCard({ event, onPress }: EventCardProps) {
             <Image
               source={{ uri: event.coverImageUrl }}
               style={styles.image}
+              accessible
+              accessibilityLabel={event.coverImageAlt}
               contentFit="cover"
               transition={200}
             />
@@ -63,37 +80,38 @@ export function EventCard({ event, onPress }: EventCardProps) {
                 styles.placeholderImage,
                 { backgroundColor: colors.surfaceSecondary },
               ]}
+              aria-hidden
             >
-              <ThemeText
-                variant="caption"
-                numberOfLines={3}
-                themeColor="textMuted"
-                style={styles.placeholderLabel}
+              <Text
+                variant="headline"
+                weight="extraBold"
+                style={{ color: colors.primary }}
               >
-                {event.primaryCategory || event.eventType}
-              </ThemeText>
+                {date.day}
+              </Text>
+              <Text variant="caption" weight="bold" tone="muted">
+                {date.month}
+              </Text>
             </View>
           )}
 
-          {event.dateBadgeText && (
+          {event.coverImageUrl && text.badge && (
             <View
               style={[
                 styles.dateBadge,
                 {
                   backgroundColor:
-                    event.dateBadgeText === 'TODAY' ||
-                    event.dateBadgeText === 'TOMORROW'
-                      ? colors.warning
-                      : colors.text,
+                    text.badge.kind === 'date' ? colors.text : colors.warning,
                 },
               ]}
             >
-              <ThemeText
+              <Text
                 variant="caption"
+                weight="extraBold"
                 style={[styles.dateBadgeText, { color: colors.textInverse }]}
               >
-                {event.dateBadgeText}
-              </ThemeText>
+                {text.badge.text}
+              </Text>
             </View>
           )}
         </View>
@@ -102,34 +120,60 @@ export function EventCard({ event, onPress }: EventCardProps) {
         <View style={styles.detailsContainer}>
           {/* Top Row: Date/Time + Bookmark Action */}
           <View style={styles.topRow}>
-            <ThemeText variant="caption" themeColor="primary">
-              {event.dateFormatted ?? event.startsAt}
-            </ThemeText>
-            <Pressable onPress={toggleSave} hitSlop={8}>
-              <Bookmark
-                size={18}
-                color={isSaved ? colors.primary : colors.textMuted}
-                fill={isSaved ? colors.primary : 'none'}
-                strokeWidth={1.75}
-              />
-            </Pressable>
+            <Text variant="footnote" tone="primary">
+              {text.dateText}
+            </Text>
+            <View style={styles.actions}>
+              {onNotInterested ? (
+                <Pressable
+                  onPress={notInterested}
+                  hitSlop={ACTION_SLOP}
+                  style={styles.action}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('eventCard.notInterested', {
+                    title: event.title,
+                  })}
+                >
+                  <EyeOff
+                    size={ACTION_ICON}
+                    color={colors.textMuted}
+                    strokeWidth={1.75}
+                  />
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={toggleSave}
+                hitSlop={ACTION_SLOP}
+                style={styles.action}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSaved }}
+                accessibilityLabel={t(
+                  isSaved ? 'eventCard.unsave' : 'eventCard.save',
+                  { title: event.title },
+                )}
+              >
+                <Pop active={isSaved}>
+                  <Bookmark
+                    size={ACTION_ICON}
+                    color={isSaved ? colors.primary : colors.textMuted}
+                    fill={isSaved ? colors.primary : 'none'}
+                    strokeWidth={1.75}
+                  />
+                </Pop>
+              </Pressable>
+            </View>
           </View>
 
           {/* Event Title */}
-          <ThemeText variant="title" numberOfLines={2} style={styles.title}>
+          <Text variant="headline" accessibilityRole="header" numberOfLines={2}>
             {event.title}
-          </ThemeText>
+          </Text>
 
           {/* Subtitle / Categories */}
           {event.primaryCategory && (
-            <ThemeText
-              variant="caption"
-              numberOfLines={1}
-              themeColor="textMuted"
-              style={styles.subtitle}
-            >
+            <Text variant="footnote" tone="muted" numberOfLines={1}>
               {event.primaryCategory}
-            </ThemeText>
+            </Text>
           )}
 
           {/* Location / Format */}
@@ -139,19 +183,15 @@ export function EventCard({ event, onPress }: EventCardProps) {
             ) : (
               <MapPin size={13} color={colors.textMuted} strokeWidth={2} />
             )}
-            <ThemeText
-              variant="caption"
-              numberOfLines={1}
-              themeColor="textMuted"
-            >
+            <Text variant="footnote" tone="muted" numberOfLines={1}>
               {event.format === 'virtual'
-                ? 'Online'
+                ? t('eventCard.online')
                 : event.venueName
                   ? event.city
                     ? `${event.venueName}, ${event.city}`
                     : event.venueName
-                  : (event.city ?? 'Venue to be confirmed')}
-            </ThemeText>
+                  : (event.city ?? t('eventCard.venueTbc'))}
+            </Text>
           </View>
 
           {/* Metadata Chips: Price | Format | Category */}
@@ -168,18 +208,18 @@ export function EventCard({ event, onPress }: EventCardProps) {
                   color={colors.textMuted}
                   strokeWidth={2}
                 />
-                <ThemeText variant="caption" themeColor="textMuted">
+                <Text variant="footnote" tone="muted">
                   {event.distanceText}
-                </ThemeText>
+                </Text>
               </View>
             )}
 
             <View
               style={[styles.chip, { backgroundColor: colors.primarySoft }]}
             >
-              <ThemeText variant="caption" themeColor="primary">
-                {event.priceLabel ?? 'Price not stated'}
-              </ThemeText>
+              <Text variant="footnote" tone="primary">
+                {text.priceLabel}
+              </Text>
             </View>
 
             <View
@@ -188,36 +228,43 @@ export function EventCard({ event, onPress }: EventCardProps) {
                 { backgroundColor: colors.surfaceSecondary },
               ]}
             >
-              <ThemeText variant="caption" themeColor="textMuted">
+              <Text variant="footnote" tone="muted">
                 {event.format === 'virtual'
-                  ? 'Virtual'
+                  ? t('eventCard.formatVirtual')
                   : event.format === 'hybrid'
-                    ? 'Hybrid'
-                    : 'In-Person'}
-              </ThemeText>
+                    ? t('eventCard.formatHybrid')
+                    : t('eventCard.formatInPerson')}
+              </Text>
             </View>
           </View>
 
-          {event.verificationText ? (
+          {reasonText ? (
+            <Text
+              variant="footnote"
+              weight="bold"
+              numberOfLines={2}
+              style={{ color: colors.highlight }}
+            >
+              {reasonText}
+            </Text>
+          ) : null}
+
+          {text.verificationText ? (
             <View style={styles.trustRow}>
-              {event.verificationState === 'source_confirmed' ||
-              event.verificationState === 'organizer_confirmed' ? (
-                <CheckCircle2
-                  size={13}
-                  color={colors.success}
-                  strokeWidth={2}
-                />
-              ) : null}
-              <ThemeText
-                variant="caption"
-                themeColor={
+              <VerifiedBadge state={event.verificationState} size={15} />
+              <Text
+                variant="footnote"
+                tone={
+                  event.verificationState === 'unreviewed' ? 'muted' : 'default'
+                }
+                style={
                   event.verificationState === 'unreviewed'
-                    ? 'textMuted'
-                    : 'success'
+                    ? undefined
+                    : { color: colors.success }
                 }
               >
-                {event.verificationText}
-              </ThemeText>
+                {text.verificationText}
+              </Text>
             </View>
           ) : null}
         </View>
@@ -226,13 +273,14 @@ export function EventCard({ event, onPress }: EventCardProps) {
   );
 }
 
+const ACTION_ICON = 18;
+/** Icon plus padding plus slop reaches the minimum touch target. */
+const ACTION_SLOP = (TouchTargets.minimum - ACTION_ICON - 2 * Spacing.xs) / 2;
+
 const styles = StyleSheet.create({
-  card: {
-    marginBottom: 12,
-  },
   cardContent: {
     flexDirection: 'row',
-    gap: 12,
+    gap: Spacing.md,
   },
   imageContainer: {
     width: 104,
@@ -250,62 +298,59 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 8,
-  },
-  placeholderLabel: {
-    textAlign: 'center',
+    padding: Spacing.sm,
   },
   dateBadge: {
     position: 'absolute',
-    bottom: 8,
-    left: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
+    bottom: Spacing.sm,
+    left: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xxs,
+    borderRadius: Radius.sm,
   },
   dateBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
     letterSpacing: 0.3,
   },
   detailsContainer: {
     flex: 1,
-    justifyContent: 'space-between',
+    gap: Spacing.xs,
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: {
-    marginVertical: 2,
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    // Wider than both slops together, so the touch areas never overlap.
+    gap: Spacing.xxl,
   },
-  subtitle: {
-    marginBottom: 4,
+  action: {
+    padding: Spacing.xs,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 6,
+    gap: Spacing.xs,
   },
   chipsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xxs,
     borderRadius: 6,
   },
   trustRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: Spacing.xs,
   },
 });

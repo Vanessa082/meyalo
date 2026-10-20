@@ -1,16 +1,23 @@
 /**
  * PersonalizeBanner
  *
- * Dismissable banner that prompts the user to personalise their feed.
- * Uses the Wand2 icon to match the mockup design.
+ * Dismissable prompt to personalise the feed. Two rows so the text keeps the
+ * full width on any screen: icon, words and close on top; the action and how
+ * long it takes underneath.
  */
 import { Wand2, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { useTranslation } from '@/i18n/locale-provider';
+import { Spacing, TouchTargets } from '@/theme';
 import { Button } from './button';
 import { Card } from './card';
-import { ThemeText } from './theme-text';
+import { IconCircle } from './icon-circle';
+import { Stack } from './stack';
+import { Text } from './text';
+
+const CLOSE_ICON = 18;
 
 interface PersonalizeBannerProps {
   onPersonalize?: () => void;
@@ -18,6 +25,7 @@ interface PersonalizeBannerProps {
 
 export function PersonalizeBanner({ onPersonalize }: PersonalizeBannerProps) {
   const colors = useTheme();
+  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(true);
 
   if (!isVisible) return null;
@@ -26,94 +34,48 @@ export function PersonalizeBanner({ onPersonalize }: PersonalizeBannerProps) {
     <Card
       variant="flat"
       padding="md"
-      style={[styles.bannerContainer, { backgroundColor: colors.primarySoft }]}
+      style={{ backgroundColor: colors.primarySoft }}
     >
-      {/* Dismiss */}
-      <Pressable
-        style={styles.dismissButton}
-        onPress={() => setIsVisible(false)}
-        hitSlop={12}
-      >
-        <X size={16} color={colors.textMuted} strokeWidth={2} />
-      </Pressable>
+      <Stack gap="md">
+        <Stack direction="row" gap="md" align="flex-start">
+          <IconCircle icon={Wand2} tone="surface" />
+          <View style={styles.text}>
+            <Text variant="headline" accessibilityRole="header">
+              {t('forYou.personalizeTitle')}
+            </Text>
+            <Text variant="footnote" tone="muted">
+              {t('forYou.personalizeBody')}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => setIsVisible(false)}
+            hitSlop={(TouchTargets.minimum - CLOSE_ICON) / 2}
+            accessibilityRole="button"
+            accessibilityLabel={t('forYou.dismiss')}
+          >
+            <X size={CLOSE_ICON} color={colors.textMuted} strokeWidth={2} />
+          </Pressable>
+        </Stack>
 
-      <View style={styles.contentRow}>
-        {/* Wand icon circle */}
-        <View style={[styles.iconCircle, { backgroundColor: colors.surface }]}>
-          <Wand2 size={22} color={colors.primary} strokeWidth={1.8} />
-        </View>
-
-        {/* Text */}
-        <View style={styles.textContainer}>
-          <ThemeText variant="title" style={styles.title}>
-            Make this more personal
-          </ThemeText>
-          <ThemeText variant="caption" themeColor="textMuted">
-            Tell us what you&apos;re interested in to get better
-            recommendations.
-          </ThemeText>
-        </View>
-
-        {/* CTA */}
-        <View style={styles.ctaWrapper}>
+        <Stack direction="row" gap="md" align="center" wrap>
           <Button
             size="small"
             variant="primary"
-            title="Personalize"
+            title={t('forYou.personalizeAction')}
             onPress={onPersonalize}
           />
-          <ThemeText
-            variant="caption"
-            themeColor="textMuted"
-            style={styles.timeText}
-          >
-            Takes 1 min
-          </ThemeText>
-        </View>
-      </View>
+          <Text variant="caption" tone="muted">
+            {t('forYou.personalizeTime')}
+          </Text>
+        </Stack>
+      </Stack>
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  bannerContainer: {
-    marginVertical: 16,
-    position: 'relative',
-  },
-  dismissButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    zIndex: 10,
-    padding: 2,
-  },
-  contentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingRight: 20, // space for the X button
-  },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  textContainer: {
+  text: {
     flex: 1,
-  },
-  title: {
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  ctaWrapper: {
-    alignItems: 'center',
-    gap: 4,
-    flexShrink: 0,
-  },
-  timeText: {
-    fontSize: 10,
+    gap: Spacing.xxs,
   },
 });

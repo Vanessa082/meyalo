@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   createContext,
   type ReactNode,
@@ -7,13 +6,19 @@ import {
   useEffect,
   useState,
 } from 'react';
-import { setActiveLanguage } from '@/i18n';
+import {
+  setActiveLanguage,
+  type TranslationParams,
+  type TxKeyPath,
+  translate,
+} from '@/i18n';
 import { getDeviceLanguageCode } from '@/i18n/device-language';
 import { type AppLanguage, resolveAppLanguage } from '@/i18n/language';
 import {
   readExplicitLanguage,
   writeExplicitLanguage,
 } from '@/i18n/language-store';
+import { deviceStorage } from '@/lib/device-storage';
 
 interface LocaleContextValue {
   language: AppLanguage;
@@ -30,7 +35,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    readExplicitLanguage(AsyncStorage).then((stored) => {
+    readExplicitLanguage(deviceStorage).then((stored) => {
       if (cancelled) return;
       if (stored) setExplicit(stored);
     });
@@ -41,7 +46,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   const setExplicitLanguage = useCallback(async (next: AppLanguage) => {
     setExplicit(next);
-    await writeExplicitLanguage(AsyncStorage, next);
+    await writeExplicitLanguage(deviceStorage, next);
   }, []);
 
   return (
@@ -57,4 +62,19 @@ export function useAppLanguage(): LocaleContextValue {
     throw new Error('useAppLanguage must be used within LocaleProvider');
   }
   return value;
+}
+
+export interface TranslationApi {
+  t: (key: TxKeyPath, params?: TranslationParams) => string;
+  language: AppLanguage;
+}
+
+export function useTranslation(): TranslationApi {
+  const { language } = useAppLanguage();
+  const bound = useCallback(
+    (key: TxKeyPath, params?: TranslationParams) =>
+      translate(key, params, language),
+    [language],
+  );
+  return { t: bound, language };
 }

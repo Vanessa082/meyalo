@@ -1,9 +1,14 @@
 import type { AppLanguage } from '@/i18n/language';
 import en from './messages/en.json';
 import fr from './messages/fr.json';
-import { lookupTranslation } from './translate';
+import {
+  interpolate,
+  lookupTranslation,
+  type TranslationParams,
+} from './translate';
 
 export type Language = AppLanguage;
+export type { TranslationParams };
 
 let activeLanguage: AppLanguage = 'fr';
 
@@ -30,12 +35,18 @@ type NestedKeyOf<T extends object> = {
 export type TxKeyPath = NestedKeyOf<typeof en>;
 
 /**
- * Safely resolves a dot-separated translation key path for a given language.
- * Falls back to English if the translation is missing in the target language.
+ * Resolves a translation in the given language, falling back to English.
+ * Components should prefer `useTranslation()` so they re-render when the
+ * language changes.
  */
-export function t(
+export function translate(
   key: TxKeyPath,
+  params?: TranslationParams,
   lang: Language = getActiveLanguage(),
 ): string {
-  return lookupTranslation(translations, key, lang);
+  return interpolate(lookupTranslation(translations, key, lang), params);
+}
+
+export function t(key: TxKeyPath, params?: TranslationParams): string {
+  return translate(key, params);
 }

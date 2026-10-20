@@ -301,13 +301,41 @@ describe('reading events', () => {
 
   it('hides drafts from anonymous and non-curator sessions', async () => {
     for (const repository of [anon, member]) {
-      const page = await repository.list({ filters: mine });
+      const page = await repository.listPublished({ filters: mine });
       assert.deepEqual(
         page.items.map((event) => event.id).sort(),
         [ids.a, ids.b, ids.c].sort(),
       );
-      await assert.rejects(repository.getById(ids.draft), isKind('not_found'));
+      await assert.rejects(
+        repository.getPublishedById(ids.draft),
+        isKind('not_found'),
+      );
     }
+    const page = await member.list({ filters: mine });
+    assert.deepEqual(
+      page.items.map((event) => event.id).sort(),
+      [ids.a, ids.b, ids.c].sort(),
+    );
+    await assert.rejects(member.getById(ids.draft), isKind('not_found'));
+  });
+
+  it('never gives anonymous sessions curator or provenance columns', async () => {
+    const marked = await service
+      .from('events')
+      .update({ checked_by: curatorId })
+      .eq('id', ids.a);
+    if (marked.error) throw marked.error;
+    assert.equal((await curator.getById(ids.a)).checkedBy, curatorId);
+
+    const page = await anon.listPublished({ filters: mine });
+    assert.ok(page.items.length > 0);
+    for (const event of page.items) {
+      assert.equal(event.checkedBy, null);
+      assert.equal(event.sourceSubmissionId, null);
+    }
+    assert.equal((await anon.getPublishedById(ids.a)).checkedBy, null);
+    await assert.rejects(anon.list({ filters: mine }), isKind('unauthorized'));
+    await assert.rejects(anon.getById(ids.a), isKind('unauthorized'));
   });
 });
 
@@ -366,10 +394,20 @@ describe('curator writes', () => {
   });
 
   it('records who checked, then publishes through a valid transition', async () => {
-    const checked = await curator.recordVerification(
-      created.id,
-      'source_confirmed',
-    );
+    const result = await curator.recordCheck({
+      eventId: created.id,
+      state: 'source_confirmed',
+      method: 'official_site',
+      evidenceUrl: 'https://example.com/db-test-check',
+      redFlags: [],
+      chargesFee: false,
+      notes: null,
+    });
+    assert.equal(result, 'confirmed');
+    const checked = await curator.getById(created.id);
+    const [check] = await curator.listChecks(created.id);
+    assert.equal(check?.checkedBy, curatorId);
+    assert.equal(check?.evidenceUrl, 'https://example.com/db-test-check');
     assert.equal(checked.verificationState, 'source_confirmed');
     assert.equal(checked.checkedBy, curatorId);
     assert.ok(checked.lastCheckedAt);
@@ -391,7 +429,7 @@ describe('curator writes', () => {
     assert.equal((await storedRow(created.id)).publication_status, 'published');
   });
 
-  it('does not let a client insert skip review or forge who checked', async () => {
+  it('does not let a client skip review, verify directly or forge who checked', async () => {
     const insert = await curatorClient.from('events').insert({
       title: `${stamp} forged`,
       description: 'x',
@@ -415,8 +453,10 @@ describe('curator writes', () => {
       .eq('id', created.id)
       .select('checked_by')
       .single();
-    assert.equal(forged.error, null);
-    assert.equal(forged.data?.checked_by, curatorId);
+    // Verification changes only through record_check (007), which keeps an
+    // evidence row for every check.
+    assert.equal(forged.error?.code, '42501');
+    assert.equal((await storedRow(created.id)).checked_by, curatorId);
   });
 });
 
@@ -442,7 +482,15 @@ describe('unauthorized access', () => {
       isKind('unauthorized'),
     );
     await assert.rejects(
-      member.recordVerification(ids.a, 'organizer_confirmed'),
+      member.recordCheck({
+        eventId: ids.a,
+        state: 'organizer_confirmed',
+        method: 'organizer_contact',
+        evidenceUrl: 'https://example.com/db-test-member',
+        redFlags: [],
+        chargesFee: false,
+        notes: null,
+      }),
       isKind('unauthorized'),
     );
     const stored = await storedRow(ids.a);
@@ -470,5 +518,148 @@ describe('unauthorized access', () => {
       isKind('unauthorized'),
     );
     assert.equal((await storedRow(ids.a)).title, `${stamp} alpha`);
+  });
+});
+
+describe('Explore search', () => {
+  const search = (extra: object = {}) => ({
+    query: stamp,
+    registrationOpen: false,
+    ...extra,
+  });
+  /** Published fixtures in start order: what search must find. Earlier
+   *  tests in this file publish more events with this run's stamp. */
+  const published = async () =>
+    (await anon.listPublished({ filters: mine })).items.map((e) => e.id);
+
+  it('finds published events only, soonest first, with a real total', async () => {
+    const expected = await published();
+    assert.ok(expected.length >= 3);
+    assert.ok(!expected.includes(ids.draft));
+    const page = await anon.searchPublished(search());
+    assert.deepEqual(
+      page.items.map((event) => event.id),
+      expected,
+    );
+    assert.equal(page.total, expected.length);
+  });
+
+  it('pages without gaps or repeats; only the first page counts', async () => {
+    const expected = await published();
+    const first = await anon.searchPublished(search(), { limit: 2 });
+    assert.equal(first.total, expected.length);
+    const ids: string[] = first.items.map((event) => event.id);
+    let cursor = first.nextCursor;
+    while (cursor) {
+      const next = await anon.searchPublished(search(), { limit: 2, cursor });
+      assert.equal(next.total, undefined);
+      ids.push(...next.items.map((event) => event.id));
+      cursor = next.nextCursor;
+    }
+    assert.deepEqual(ids, expected);
+  });
+
+  it('applies filters on the server', async () => {
+    const virtual = await anon.searchPublished(
+      search({ formats: ['virtual'] }),
+    );
+    assert.deepEqual(
+      virtual.items.map((event) => event.id),
+      [ids.b],
+    );
+    const tech = await anon.searchPublished(search({ topics: ['technology'] }));
+    assert.deepEqual(
+      tech.items.map((event) => event.id),
+      [ids.a],
+    );
+    assert.deepEqual(tech.items[0].topics, ['technology']);
+  });
+
+  it('sorts by most recently added', async () => {
+    const page = await anon.searchPublished(search(), { sort: 'created_desc' });
+    const { data, error } = await service
+      .from('events')
+      .select('id, created_at')
+      .in(
+        'id',
+        page.items.map((event) => event.id),
+      )
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false });
+    if (error) throw error;
+    assert.deepEqual(
+      page.items.map((event) => event.id),
+      (data ?? []).map((row) => row.id),
+    );
+  });
+
+  it('rejects a cursor from another sort', async () => {
+    const first = await anon.searchPublished(search(), { limit: 1 });
+    await assert.rejects(
+      anon.searchPublished(search(), {
+        sort: 'created_desc',
+        cursor: first.nextCursor,
+      }),
+      isKind('invalid_input'),
+    );
+  });
+});
+
+describe('event images', () => {
+  // Storage checks the declared type and size, not the bytes, so a tiny
+  // stand-in file is enough to test the rules.
+  const webp = () =>
+    new Blob([new Uint8Array([82, 73, 70, 70, 0, 0, 0, 0])], {
+      type: 'image/webp',
+    });
+  const input = {
+    rights: 'organizer_provided' as const,
+    alt: 'A speaker on stage',
+    credit: 'Photo: the organiser',
+  };
+
+  it('lets a curator add an image the public can load', async () => {
+    const saved = await curator.setCoverImage(
+      ids.a,
+      randomUUID(),
+      { small: webp(), large: webp() },
+      input,
+    );
+    assert.equal(saved.coverImage?.alt, 'A speaker on stage');
+    assert.equal(saved.coverImage?.rights, 'organizer_provided');
+
+    const seen = await anon.getPublishedById(ids.a);
+    assert.equal(seen.coverImage?.credit, 'Photo: the organiser');
+    assert.equal(seen.coverImage?.rights, null);
+    const response = await fetch(seen.coverImage?.smallUrl ?? '');
+    assert.equal(response.status, 200);
+  });
+
+  it('refuses a non-curator, at the bucket and at the event', async () => {
+    await assert.rejects(
+      member.setCoverImage(
+        ids.b,
+        randomUUID(),
+        { small: webp(), large: webp() },
+        input,
+      ),
+      isKind('unauthorized'),
+    );
+    assert.equal((await anon.getPublishedById(ids.b)).coverImage, null);
+  });
+
+  it('replaces and removes, deleting the old files', async () => {
+    const first = await curator.getById(ids.a);
+    const oldUrl = first.coverImage?.smallUrl ?? '';
+    await curator.setCoverImage(
+      ids.a,
+      randomUUID(),
+      { small: webp(), large: webp() },
+      input,
+    );
+    assert.equal((await fetch(oldUrl)).status >= 400, true);
+
+    const cleared = await curator.removeCoverImage(ids.a);
+    assert.equal(cleared.coverImage, null);
   });
 });

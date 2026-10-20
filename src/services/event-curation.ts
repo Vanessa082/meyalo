@@ -4,18 +4,19 @@
  * permissions, transitions and constraints on every write.
  */
 import type {
+  CheckResult,
   Event,
+  EventCheck,
+  EventCheckInput,
   EventFormValues,
   EventListQuery,
   EventPage,
+  EventReport,
   EventTaxonomy,
   PublicationStatus,
-  VerificationState,
 } from '../types/event.type.ts';
-import {
-  publicationChangeBlocker,
-  verificationChangeBlocker,
-} from './event-domain.ts';
+import { type CoverImageInput, coverImageInputProblem } from './cover-image.ts';
+import { publicationChangeBlocker } from './event-domain.ts';
 import type { EventRepository } from './event-repository.ts';
 import {
   type EventFieldErrors,
@@ -49,7 +50,21 @@ export interface EventCuration {
   /** Saves against the version the curator loaded (`event.updatedAt`). */
   update(event: Event, values: EventFormValues): Promise<Event>;
   changePublication(event: Event, to: PublicationStatus): Promise<Event>;
-  recordVerification(event: Event, to: VerificationState): Promise<Event>;
+  /** Records a check with its evidence, then returns the event as saved. */
+  recordCheck(
+    event: Event,
+    check: Omit<EventCheckInput, 'eventId'>,
+  ): Promise<{ result: CheckResult; event: Event }>;
+  /** Validates the rights and alt text, then uploads (web console). */
+  setCoverImage(
+    event: Event,
+    uploadId: string,
+    images: { small: Blob; large: Blob },
+    input: CoverImageInput,
+  ): Promise<Event>;
+  removeCoverImage(event: Event): Promise<Event>;
+  checks(eventId: string): Promise<EventCheck[]>;
+  reports(eventId: string): Promise<EventReport[]>;
 }
 
 export function createEventCuration(
@@ -83,10 +98,29 @@ export function createEventCuration(
       );
     },
 
-    recordVerification: async (event, to) => {
-      const blocker = verificationChangeBlocker(event, to);
-      if (blocker) throw new EventRuleError(blocker);
-      return repository.recordVerification(event.id, to);
+    recordCheck: async (event, check) => {
+      const result = await repository.recordCheck({
+        ...check,
+        eventId: event.id,
+      });
+      return { result, event: await repository.getById(event.id) };
     },
+
+    setCoverImage: async (event, uploadId, images, input) => {
+      const problem = coverImageInputProblem(input);
+      if (problem || !input.rights) {
+        throw new EventRuleError(problem ?? 'Say how we may use this image.');
+      }
+      return repository.setCoverImage(event.id, uploadId, images, {
+        rights: input.rights,
+        alt: input.alt,
+        credit: input.credit,
+      });
+    },
+
+    removeCoverImage: (event) => repository.removeCoverImage(event.id),
+
+    checks: (eventId) => repository.listChecks(eventId),
+    reports: (eventId) => repository.listReports(eventId),
   };
 }

@@ -1,188 +1,226 @@
-import { useRouter } from 'expo-router';
-import { Search, X } from 'lucide-react-native';
-import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { CategoryFilterBar } from '@/components/ui/category-filter-bar';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet } from 'react-native';
+import { ExploreFilters } from '@/components/explore/explore-filters';
+import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
 import { EventCard } from '@/components/ui/event-card';
-import { Screen } from '@/components/ui/screen';
-import { ThemeText } from '@/components/ui/theme-text';
-import { useForYouEvents } from '@/hooks/use-events';
-import { useTheme } from '@/hooks/use-theme';
-import { t } from '@/i18n';
+import { EventListSkeleton } from '@/components/ui/event-card-skeleton';
+import { InlineMessage } from '@/components/ui/inline-message';
+import { OfflineNotice } from '@/components/ui/offline-notice';
+import { Page, PageHeader } from '@/components/ui/page';
+import { SearchInput } from '@/components/ui/search-input';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Stack } from '@/components/ui/stack';
+import { Text } from '@/components/ui/text';
+import { TOPIC_IDS } from '@/config/discovery/topics';
+import { REGION } from '@/config/region';
+import { useExploreSearch } from '@/hooks/use-events';
+import { translate } from '@/i18n';
+import { useTranslation } from '@/i18n/locale-provider';
+import {
+  activeFilterCount,
+  EMPTY_EXPLORE,
+  type ExploreState,
+  MAX_QUERY_LENGTH,
+  parseExploreParams,
+  toExploreParams,
+  topicsMatching,
+  toSearchInput,
+} from '@/services/explore-params';
+import { Spacing } from '@/theme';
 
-/**
- * Normalizes text for accent-insensitive search (e.g., "Yaoundé" matches "yaounde").
- */
-function normalizeSearchText(str: string): string {
-  return (str ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-}
+/** Every parameter Explore owns, so a change can also remove old ones. */
+const PARAM_KEYS = [
+  'q',
+  'when',
+  'city',
+  'format',
+  'free',
+  'topic',
+  'offer',
+  'lang',
+  'open',
+  'sort',
+] as const;
+
+const SEARCH_DELAY_MS = 350;
+
+/** Topic names in both app languages, so either finds the topic. */
+const topicLabels = (id: (typeof TOPIC_IDS)[number]) => [
+  translate(`topics.${id}`, undefined, 'en'),
+  translate(`topics.${id}`, undefined, 'fr'),
+];
 
 export default function ExploreScreen() {
-  const colors = useTheme();
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const { t } = useTranslation();
+  const params = useLocalSearchParams();
+  const state = useMemo(() => parseExploreParams(params), [params]);
 
-  const { data: events = [], isLoading } = useForYouEvents();
-
-  const filteredEvents = events.filter((e) => {
-    // 1. Keyword search filter
-    if (searchQuery.trim().length > 0) {
-      const q = normalizeSearchText(searchQuery);
-      const titleMatch = normalizeSearchText(e.title).includes(q);
-      const descMatch = normalizeSearchText(e.description ?? '').includes(q);
-      const organizerMatch = normalizeSearchText(e.organizerName).includes(q);
-      const cityMatch = normalizeSearchText(e.city ?? '').includes(q);
-      const categoryMatch = normalizeSearchText(
-        e.primaryCategory ?? '',
-      ).includes(q);
-
-      if (
-        !titleMatch &&
-        !descMatch &&
-        !organizerMatch &&
-        !cityMatch &&
-        !categoryMatch
-      ) {
-        return false;
-      }
-    }
-
-    // 2. Category tab filter
-    if (selectedCategory === 'all') return true;
-
-    const cat = (e.primaryCategory ?? e.eventType ?? '').toLowerCase();
-
-    if (selectedCategory === 'work') {
-      return (
-        cat.includes('job') ||
-        cat.includes('skill') ||
-        cat.includes('career') ||
-        cat.includes('tech') ||
-        cat.includes('software')
+  // The page address is the only source of truth for search and filters.
+  // `intended` runs ahead of it between a tap and the address updating, so
+  // two quick taps both count.
+  const intended = useRef(state);
+  useEffect(() => {
+    intended.current = state;
+  }, [state]);
+  const update = useCallback(
+    (change: (previous: ExploreState) => ExploreState) => {
+      const next = change(intended.current);
+      intended.current = next;
+      const cleared = Object.fromEntries(
+        PARAM_KEYS.map((key) => [key, undefined]),
       );
+      router.setParams({ ...cleared, ...toExploreParams(next) } as never);
+    },
+    [router],
+  );
+
+  // The box follows the address only when the address changed from outside
+  // (Clear all, a shared link), never when it catches up with typing.
+  const [text, setText] = useState(state.q);
+  const pushed = useRef(state.q);
+  useEffect(() => {
+    if (state.q !== pushed.current) {
+      pushed.current = state.q;
+      setText(state.q);
     }
-    if (selectedCategory === 'business') {
-      return (
-        cat.includes('build') ||
-        cat.includes('connect') ||
-        cat.includes('business') ||
-        cat.includes('finance') ||
-        cat.includes('agri')
-      );
-    }
-    if (selectedCategory === 'learning') {
-      return (
-        cat.includes('software') ||
-        cat.includes('ai') ||
-        cat.includes('code') ||
-        cat.includes('masterclass') ||
-        cat.includes('education')
-      );
-    }
-    return true;
-  });
+  }, [state.q]);
+  useEffect(() => {
+    const trimmed = text.trim();
+    if (trimmed === state.q) return;
+    const timer = setTimeout(() => {
+      pushed.current = trimmed;
+      update((previous) => ({ ...previous, q: trimmed }));
+    }, SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [text, state, update]);
+
+  // A new object each render is fine: queries are keyed by value.
+  const input = toSearchInput(
+    state,
+    new Date(),
+    REGION.timeZone,
+    topicsMatching(state.q, topicLabels),
+  );
+  const results = useExploreSearch(
+    input,
+    state.sort === 'recent' ? 'created_desc' : 'start_asc',
+  );
+  const events = results.data?.pages.flatMap((page) => page.items) ?? [];
+  const total = results.data?.pages[0]?.total;
+  const browsing = !state.q && activeFilterCount(state) === 0;
 
   return (
-    <Screen style={styles.container} scrollable>
-      {/* Header */}
-      <View style={styles.header}>
-        <ThemeText variant="header">{t('tabs.explore')}</ThemeText>
-        <ThemeText variant="body" themeColor="textMuted">
-          Discover growth sectors, workshops, and virtual opportunities across
-          Africa.
-        </ThemeText>
-      </View>
+    <Page>
+      <PageHeader title={t('tabs.explore')} subtitle={t('explore.subtitle')} />
 
-      {/* ─── Search Input Bar ─── */}
-      <View
-        style={[
-          styles.searchBar,
-          { backgroundColor: colors.surface, borderColor: colors.border },
-        ]}
-      >
-        <Search size={18} color={colors.textMuted} />
-        <TextInput
-          style={[styles.searchInput, { color: colors.text }]}
-          placeholder="Search by keyword, topic, or city..."
-          placeholderTextColor={colors.textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoCapitalize="none"
-          autoCorrect={false}
+      <Stack gap="md">
+        <SearchInput
+          value={text}
+          onChangeText={(value) => setText(value.slice(0, MAX_QUERY_LENGTH))}
+          placeholder={t('explore.searchPlaceholder')}
+          accessibilityLabel={t('explore.searchPlaceholder')}
+          clearLabel={t('explore.clearSearch')}
         />
-        {searchQuery.length > 0 && (
-          <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-            <X size={16} color={colors.textMuted} />
-          </Pressable>
-        )}
-      </View>
+        <ExploreFilters state={state} onChange={update} />
+      </Stack>
 
-      {/* Category Filters */}
-      <CategoryFilterBar
-        selectedId={selectedCategory}
-        onSelectCategory={setSelectedCategory}
-      />
+      {browsing ? (
+        <Stack gap="sm">
+          <SectionHeader title={t('explore.browseTopics')} />
+          <Stack direction="row" gap="sm" wrap>
+            {TOPIC_IDS.map((topic) => (
+              <Chip
+                key={topic}
+                label={t(`topics.${topic}`)}
+                selected={false}
+                onPress={() =>
+                  update((previous) => ({ ...previous, topics: [topic] }))
+                }
+              />
+            ))}
+          </Stack>
+        </Stack>
+      ) : null}
 
-      {/* Event Cards List */}
-      <View style={styles.eventList}>
-        {isLoading ? (
-          <ThemeText variant="caption">Loading opportunities...</ThemeText>
-        ) : filteredEvents.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <ThemeText variant="title">No matching opportunities</ThemeText>
-            <ThemeText variant="caption" themeColor="textMuted">
-              Try adjusting your search keyword or category filter.
-            </ThemeText>
-          </View>
+      <OfflineNotice updatedAt={results.dataUpdatedAt} />
+
+      <Stack gap="md">
+        {browsing ? <SectionHeader title={t('explore.comingUp')} /> : null}
+        {results.isPending && results.fetchStatus !== 'paused' ? (
+          <EventListSkeleton label={t('explore.loading')} />
+        ) : results.isError && events.length === 0 ? (
+          <InlineMessage
+            tone="error"
+            message={t('explore.loadError')}
+            actionLabel={t('explore.retry')}
+            onAction={() => results.refetch()}
+          />
+        ) : events.length === 0 && !results.isPending ? (
+          <Stack gap="sm" align="center" style={styles.empty}>
+            <Text variant="headline" accessibilityRole="header">
+              {t('explore.emptyTitle')}
+            </Text>
+            <Text variant="callout" tone="muted" align="center">
+              {t('explore.emptyBody')}
+            </Text>
+            {activeFilterCount(state) > 0 || state.q ? (
+              <Button
+                title={t('explore.clearAll')}
+                variant="outline"
+                size="small"
+                onPress={() =>
+                  update((previous) => ({ ...previous, ...emptyFilters }))
+                }
+              />
+            ) : null}
+          </Stack>
         ) : (
-          filteredEvents.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onPress={() => router.push(`/event/${event.id}` as never)}
-            />
-          ))
+          <>
+            {total !== undefined ? (
+              <Text
+                variant="footnote"
+                tone="muted"
+                accessibilityLiveRegion="polite"
+              >
+                {total === 1
+                  ? t('explore.resultOne')
+                  : t('explore.resultMany', { count: total })}
+              </Text>
+            ) : null}
+            {events.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+            {results.isFetchNextPageError ? (
+              <InlineMessage
+                tone="error"
+                message={t('explore.loadMoreFailed')}
+                actionLabel={t('explore.retry')}
+                onAction={() => results.fetchNextPage()}
+              />
+            ) : results.hasNextPage ? (
+              <Button
+                title={t('explore.loadMore')}
+                variant="outline"
+                loading={results.isFetchingNextPage}
+                onPress={() => results.fetchNextPage()}
+              />
+            ) : null}
+          </>
         )}
-      </View>
-    </Screen>
+      </Stack>
+    </Page>
   );
 }
 
+/** "Clear all" from the empty state clears the words and every filter, and
+ *  keeps the sort. Derived, so a new filter is cleared without a change here. */
+const { sort: _keepSort, ...emptyFilters } = EMPTY_EXPLORE;
+
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  header: {
-    marginBottom: 16,
-    gap: 4,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    height: 46,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 16,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    paddingVertical: 0,
-  },
-  eventList: {
-    gap: 16,
-    paddingBottom: 24,
-  },
-  emptyContainer: {
-    paddingVertical: 32,
-    alignItems: 'center',
-    gap: 8,
+  empty: {
+    paddingVertical: Spacing.xxxl,
   },
 });

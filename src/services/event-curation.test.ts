@@ -32,7 +32,9 @@ function fakeRepository(overrides: Partial<EventRepository> = {}) {
     create: fail('create'),
     update: fail('update'),
     changePublication: fail('changePublication'),
-    recordVerification: fail('recordVerification'),
+    recordCheck: fail('recordCheck'),
+    listChecks: fail('listChecks'),
+    listReports: fail('listReports'),
     listTaxonomy: async () => TAXONOMY,
     ...overrides,
   };
@@ -97,16 +99,6 @@ describe('createEventCuration', () => {
     await assert.rejects(
       curation.changePublication(makeEvent(), 'published'),
       /check before publishing/,
-    );
-    await assert.rejects(
-      curation.recordVerification(
-        makeEvent({
-          publicationStatus: 'published',
-          verificationState: 'source_confirmed',
-        }),
-        'unreviewed',
-      ),
-      EventRuleError,
     );
     assert.deepEqual(calls, []);
   });

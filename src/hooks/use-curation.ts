@@ -4,16 +4,18 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import * as Crypto from 'expo-crypto';
+import type { CoverImageInput } from '@/services/cover-image';
 import { eventCuration } from '@/services/event.service';
 import { isEventRepositoryError } from '@/services/event-repository';
 import type {
   Event,
+  EventCheckInput,
   EventCursor,
   EventFilters,
   EventFormValues,
   EventSort,
   PublicationStatus,
-  VerificationState,
 } from '@/types/event.type';
 
 export const curationKeys = {
@@ -23,6 +25,8 @@ export const curationKeys = {
     ['curation', 'list', { filters, sort }] as const,
   event: (id: string) => ['curation', 'event', id] as const,
   taxonomy: ['curation', 'taxonomy'] as const,
+  checks: (id: string) => ['curation', 'checks', id] as const,
+  reports: (id: string) => ['curation', 'reports', id] as const,
 };
 
 const PAGE_SIZE = 25;
@@ -110,13 +114,72 @@ export function useChangePublication(event: Event | undefined) {
   });
 }
 
-export function useRecordVerification(event: Event | undefined) {
+export function useRecordCheck(event: Event | undefined) {
+  const store = useStorePersisted();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (check: Omit<EventCheckInput, 'eventId'>) => {
+      if (!event) throw new Error('The event has not loaded.');
+      return eventCuration.recordCheck(event, check);
+    },
+    onSuccess: ({ event: saved }) => {
+      store(saved);
+      queryClient.invalidateQueries({
+        queryKey: curationKeys.checks(saved.id),
+      });
+    },
+  });
+}
+
+/** Resized files go up under a fresh id, so a replaced image never serves a
+ *  stale cached copy. */
+export function useSetCoverImage(event: Event | undefined) {
   const store = useStorePersisted();
   return useMutation({
-    mutationFn: (to: VerificationState) => {
+    mutationFn: ({
+      images,
+      input,
+    }: {
+      images: { small: Blob; large: Blob };
+      input: CoverImageInput;
+    }) => {
       if (!event) throw new Error('The event has not loaded.');
-      return eventCuration.recordVerification(event, to);
+      return eventCuration.setCoverImage(
+        event,
+        Crypto.randomUUID(),
+        images,
+        input,
+      );
     },
     onSuccess: store,
+  });
+}
+
+export function useRemoveCoverImage(event: Event | undefined) {
+  const store = useStorePersisted();
+  return useMutation({
+    mutationFn: () => {
+      if (!event) throw new Error('The event has not loaded.');
+      return eventCuration.removeCoverImage(event);
+    },
+    onSuccess: store,
+  });
+}
+
+export function useEventChecks(id: string) {
+  return useQuery({
+    queryKey: curationKeys.checks(id),
+    queryFn: () => eventCuration.checks(id),
+    enabled: Boolean(id),
+    retry: retryUnavailable,
+  });
+}
+
+export function useEventReports(id: string) {
+  return useQuery({
+    queryKey: curationKeys.reports(id),
+    queryFn: () => eventCuration.reports(id),
+    enabled: Boolean(id),
+    retry: retryUnavailable,
   });
 }

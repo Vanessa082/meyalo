@@ -46,6 +46,7 @@ export function makeEvent(overrides: Partial<Event> = {}): Event {
     verificationState: 'unreviewed',
     lastCheckedAt: null,
     checkedBy: null,
+    coverImage: null,
     publicationStatus: 'draft',
     createdAt: '2026-10-01T00:00:00.000Z',
     updatedAt: '2026-10-01T00:00:00.000Z',

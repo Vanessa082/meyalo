@@ -8,86 +8,99 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
-import { Radius, Spacing, TouchTargets, Typography } from '@/theme';
+import { Radius, Spacing, TextStyles } from '@/theme';
 import type { ThemeColors } from '@/theme/colors';
-import { ThemeText } from './theme-text';
+import { focusRing } from './focus';
+import { Text } from './text';
 
+/**
+ * primary: the one main action on a screen · secondary: a quieter filled
+ * alternative · outline: a bordered alternative · ghost: a text button.
+ */
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 export type ButtonSize = 'small' | 'medium' | 'large';
 
 export interface ButtonProps {
-  /** Text label displayed inside the button */
   title?: string;
-  /** Custom children (rendered instead of title if provided) */
   children?: ReactNode;
-  /** Press handler */
   onPress?: () => void;
-  /** Visual hierarchy variant */
   variant?: ButtonVariant;
-  /** Size scale */
   size?: ButtonSize;
-  /** Disables touch interactions and updates visuals */
   disabled?: boolean;
-  /** Displays a loading spinner and disables touch interactions */
+  /** Shows a spinner, keeps the label for screen readers, blocks presses. */
   loading?: boolean;
-  /** Optional icon element */
   icon?: ReactNode;
-  /** Placement of icon relative to label text */
   iconPosition?: 'start' | 'end';
-  /** Stretches button across available width */
   fullWidth?: boolean;
-  /** Additional container styles */
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  testID?: string;
   style?: StyleProp<ViewStyle>;
-  /** Additional text label styles */
   textStyle?: StyleProp<TextStyle>;
 }
 
-// ----------------------------------------------------------------------------
-// Declarative Lookup Maps (Advanced Record Pattern)
-// ----------------------------------------------------------------------------
+interface VariantColors {
+  background: string;
+  pressed: string;
+  label: string;
+  border: string;
+}
 
-const variantBackgroundResolvers: Record<
-  ButtonVariant,
-  (colors: ThemeColors, pressed: boolean) => string
-> = {
-  primary: (c, pressed) => (pressed ? c.primaryPressed : c.actionPrimary),
-  secondary: (c, pressed) =>
-    pressed ? c.backgroundSelected : c.surfaceSecondary,
-  outline: (c, pressed) => (pressed ? c.primarySoft : 'transparent'),
-  ghost: (c, pressed) => (pressed ? c.primarySoft : 'transparent'),
-};
+function variantColors(
+  variant: ButtonVariant,
+  c: ThemeColors,
+  disabled: boolean,
+): VariantColors {
+  if (disabled) {
+    const filled = variant === 'primary' || variant === 'secondary';
+    return {
+      background: filled ? c.actionDisabled : 'transparent',
+      pressed: filled ? c.actionDisabled : 'transparent',
+      label: c.textMuted,
+      border: variant === 'outline' ? c.border : 'transparent',
+    };
+  }
+  switch (variant) {
+    case 'primary':
+      return {
+        background: c.actionPrimary,
+        pressed: c.actionPrimaryPressed,
+        label: c.onPrimary,
+        border: 'transparent',
+      };
+    case 'secondary':
+      return {
+        background: c.surfaceSunken,
+        pressed: c.backgroundSelected,
+        label: c.text,
+        border: 'transparent',
+      };
+    case 'outline':
+      return {
+        background: 'transparent',
+        pressed: c.primarySoft,
+        label: c.text,
+        border: c.border,
+      };
+    case 'ghost':
+      return {
+        background: 'transparent',
+        pressed: c.primarySoft,
+        label: c.textLink,
+        border: 'transparent',
+      };
+  }
+}
 
-const variantTextColorMap: Record<ButtonVariant, keyof ThemeColors> = {
-  primary: 'textInverse',
-  secondary: 'text',
-  outline: 'primary',
-  ghost: 'primary',
-};
-
-const sizeMetricsMap: Record<
+const sizeMetrics: Record<
   ButtonSize,
-  { height: number; paddingHorizontal: number }
+  { minHeight: number; paddingHorizontal: number }
 > = {
-  small: {
-    height: 36,
-    paddingHorizontal: Spacing.sm,
-  },
-  medium: {
-    height: TouchTargets.recommended, // 48px
-    paddingHorizontal: Spacing.lg,
-  },
-  large: {
-    height: 56,
-    paddingHorizontal: Spacing.xxl,
-  },
+  small: { minHeight: 36, paddingHorizontal: Spacing.md },
+  medium: { minHeight: 48, paddingHorizontal: Spacing.lg },
+  large: { minHeight: 52, paddingHorizontal: Spacing.xxl },
 };
 
-/**
- * Button Primitive
- *
- * Theme-aware, accessible interactive button supporting multiple variants,
- * sizes, loading spinners, and icon positions.
- */
 export function Button({
   title,
   children,
@@ -99,66 +112,52 @@ export function Button({
   icon,
   iconPosition = 'start',
   fullWidth = false,
+  accessibilityLabel,
+  accessibilityHint,
+  testID,
   style,
   textStyle,
 }: ButtonProps) {
   const colors = useTheme();
-  const isInteractive = !disabled && !loading;
-
-  // Resolve border color
-  const borderColor = disabled
-    ? colors.actionDisabled
-    : variant === 'outline'
-      ? colors.borderStrong
-      : 'transparent';
-
-  // Resolve label color
-  const textColorKey = disabled
-    ? 'textMuted'
-    : (variantTextColorMap[variant] ?? 'textInverse');
-
-  const sizeMetrics = sizeMetricsMap[size] ?? sizeMetricsMap.medium;
+  const interactive = !disabled && !loading;
+  const palette = variantColors(variant, colors, disabled);
 
   return (
     <Pressable
-      onPress={isInteractive ? onPress : undefined}
-      disabled={!isInteractive}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !isInteractive, busy: loading }}
-      style={({ pressed }) => [
+      onPress={interactive ? onPress : undefined}
+      disabled={!interactive}
+      role="button"
+      aria-label={accessibilityLabel ?? title}
+      accessibilityHint={accessibilityHint}
+      aria-disabled={!interactive}
+      aria-busy={loading}
+      hitSlop={size === 'small' ? 4 : undefined}
+      testID={testID}
+      style={(state) => [
         styles.base,
-        sizeMetrics,
+        sizeMetrics[size],
         {
-          backgroundColor: disabled
-            ? colors.actionDisabled
-            : (
-                variantBackgroundResolvers[variant] ??
-                variantBackgroundResolvers.primary
-              )(colors, pressed),
-          borderColor,
-          borderWidth: variant === 'outline' ? 1 : 0,
+          backgroundColor: state.pressed ? palette.pressed : palette.background,
+          borderColor: palette.border,
         },
         fullWidth && styles.fullWidth,
+        focusRing(state, colors),
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={colors[textColorKey]} />
+        <ActivityIndicator size="small" color={palette.label} />
       ) : (
         <>
           {icon && iconPosition === 'start' ? icon : null}
-          {children ? (
-            children
-          ) : (
-            <ThemeText
-              style={[
-                Typography.button,
-                { color: colors[textColorKey] },
-                textStyle,
-              ]}
+          {children ?? (
+            <Text
+              style={[TextStyles.label, { color: palette.label }, textStyle]}
+              numberOfLines={2}
+              align="center"
             >
               {title}
-            </ThemeText>
+            </Text>
           )}
           {icon && iconPosition === 'end' ? icon : null}
         </>
@@ -173,9 +172,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.button,
+    borderWidth: 1,
     gap: Spacing.sm,
   },
   fullWidth: {
-    width: '100%',
+    alignSelf: 'stretch',
   },
 });

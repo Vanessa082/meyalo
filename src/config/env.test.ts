@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { joinPublicUrl, normalizeBaseUrl } from './env.ts';
+import { geocoderBaseUrl, joinPublicUrl, normalizeBaseUrl } from './env.ts';
 
 describe('public base URL', () => {
   it('returns null when no base URL is configured', () => {
@@ -27,5 +27,28 @@ describe('public base URL', () => {
     );
     assert.throws(() => normalizeBaseUrl('not a url'));
     assert.throws(() => normalizeBaseUrl('meyalo://event/1'));
+  });
+});
+
+describe('geocoderBaseUrl', () => {
+  it('defaults to OpenStreetMap Nominatim', () => {
+    assert.equal(
+      geocoderBaseUrl(undefined),
+      'https://nominatim.openstreetmap.org',
+    );
+  });
+
+  it('can be switched off without a code change', () => {
+    assert.equal(geocoderBaseUrl('off'), null);
+    assert.equal(geocoderBaseUrl(' OFF '), null);
+  });
+
+  it('accepts another https host and rejects anything else', () => {
+    assert.equal(
+      geocoderBaseUrl('https://geo.example.org/'),
+      'https://geo.example.org',
+    );
+    assert.equal(geocoderBaseUrl('http://geo.example.org'), null);
+    assert.equal(geocoderBaseUrl('not a url'), null);
   });
 });

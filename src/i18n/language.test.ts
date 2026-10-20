@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
+import { GOAL_IDS } from '../config/discovery/goals.ts';
+import { TOPIC_IDS } from '../config/discovery/topics.ts';
 import { resolveAppLanguage } from './language.ts';
 import {
   readExplicitLanguage,
   writeExplicitLanguage,
 } from './language-store.ts';
-import { catalogKeyPaths, lookupTranslation } from './translate.ts';
+import {
+  catalogKeyPaths,
+  interpolate,
+  lookupTranslation,
+} from './translate.ts';
 
 describe('resolveAppLanguage', () => {
   it('uses English for an English device when nothing is saved', () => {
@@ -85,6 +91,46 @@ describe('translations', () => {
     );
   });
 
+  it('fills placeholders and leaves unknown ones visible', () => {
+    assert.equal(
+      interpolate('Step {current} of {total}', { current: 1, total: 3 }),
+      'Step 1 of 3',
+    );
+    assert.equal(interpolate('Hi {name}', {}), 'Hi {name}');
+    assert.equal(interpolate('No params', undefined), 'No params');
+  });
+
+  it('uses the same placeholders in French and English', () => {
+    const en = JSON.parse(
+      readFileSync(new URL('./messages/en.json', import.meta.url), 'utf8'),
+    );
+    const fr = JSON.parse(
+      readFileSync(new URL('./messages/fr.json', import.meta.url), 'utf8'),
+    );
+    const placeholders = (s: string) => (s.match(/\{\w+\}/g) ?? []).sort();
+    for (const key of catalogKeyPaths(en)) {
+      assert.deepEqual(
+        placeholders(lookupTranslation({ en, fr }, key, 'fr')),
+        placeholders(lookupTranslation({ en, fr }, key, 'en')),
+        key,
+      );
+    }
+  });
+
+  it('labels every topic and goal in both languages', () => {
+    for (const lang of ['en', 'fr'] as const) {
+      const catalog = JSON.parse(
+        readFileSync(
+          new URL(`./messages/${lang}.json`, import.meta.url),
+          'utf8',
+        ),
+      );
+      for (const id of TOPIC_IDS)
+        assert.ok(catalog.topics[id], `${lang} ${id}`);
+      for (const id of GOAL_IDS) assert.ok(catalog.goals[id], `${lang} ${id}`);
+    }
+  });
+
   it('keeps French and English catalogs on the same keys', () => {
     const en = JSON.parse(
       readFileSync(new URL('./messages/en.json', import.meta.url), 'utf8'),
@@ -94,6 +140,6 @@ describe('translations', () => {
     );
     assert.deepEqual(catalogKeyPaths(en).sort(), catalogKeyPaths(fr).sort());
     assert.equal(en.tabs.forYou, 'For You');
-    assert.equal(fr.tabs.forYou, 'Pour Vous');
+    assert.equal(fr.tabs.forYou, 'Pour vous');
   });
 });

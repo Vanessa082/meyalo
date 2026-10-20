@@ -15,7 +15,7 @@ import {
   eventTime,
 } from '@/components/console/event-status';
 import { Button } from '@/components/ui/button';
-import { ThemeText } from '@/components/ui/theme-text';
+import { Text } from '@/components/ui/text';
 import { useCurationEvents } from '@/hooks/use-curation';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -26,6 +26,7 @@ import {
   VERIFICATION_LABELS,
   VERIFICATION_STATES,
 } from '@/services/event-domain';
+import { DAY_MS } from '@/services/zoned-time';
 import type {
   Event,
   EventFilters,
@@ -35,7 +36,6 @@ import type {
   VerificationState,
 } from '@/types/event.type';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 interface FilterDraft {
@@ -62,7 +62,13 @@ const EMPTY_DRAFT: FilterDraft = {
   to: '',
 };
 
-type ListView = 'all' | 'needs_review' | 'recheck' | 'stale';
+type ListView =
+  | 'all'
+  | 'needs_review'
+  | 'under_review'
+  | 'recheck'
+  | 'stale'
+  | 'unpinned';
 
 const SORTS: { value: EventSort; label: string }[] = [
   { value: 'start_asc', label: 'Soonest first' },
@@ -107,6 +113,8 @@ function draftToFilters(
   const today = new Date(now).toISOString();
   if (view === 'needs_review') {
     filters.verificationStates = ['unreviewed'];
+  } else if (view === 'under_review') {
+    filters.publicationStatuses = ['under_review'];
   } else if (view === 'recheck') {
     filters.publicationStatuses = ['published'];
     filters.startsFrom = today;
@@ -115,6 +123,11 @@ function draftToFilters(
     filters.publicationStatuses = ['published'];
     filters.startsFrom = today;
     filters.lastCheckedBefore = new Date(now - 14 * DAY_MS).toISOString();
+  } else if (view === 'unpinned') {
+    filters.publicationStatuses = ['published'];
+    filters.formats = ['in_person', 'hybrid'];
+    filters.startsFrom = today;
+    filters.notPinned = true;
   }
   return { filters, errors };
 }
@@ -141,12 +154,28 @@ export default function CurationListScreen() {
   const header = (
     <View style={styles.header}>
       <View style={styles.titleRow}>
-        <ThemeText variant="h2">Events</ThemeText>
-        <Button
-          title="New event"
-          size="small"
-          onPress={() => router.push('/console/new')}
-        />
+        <Text variant="title2" accessibilityRole="header">
+          Events
+        </Text>
+        <View style={styles.headerActions}>
+          <Button
+            title="Submissions"
+            variant="outline"
+            size="small"
+            onPress={() => router.push('/console/submissions')}
+          />
+          <Button
+            title="Coverage"
+            variant="outline"
+            size="small"
+            onPress={() => router.push('/console/coverage')}
+          />
+          <Button
+            title="New event"
+            size="small"
+            onPress={() => router.push('/console/new')}
+          />
+        </View>
       </View>
 
       <Choices
@@ -154,8 +183,13 @@ export default function CurationListScreen() {
         options={[
           { value: 'all', label: 'All events' },
           { value: 'needs_review', label: 'Needs review' },
+          {
+            value: 'under_review',
+            label: 'Taken down for review (reports, rejections)',
+          },
           { value: 'recheck', label: 'Published, starting within 7 days' },
           { value: 'stale', label: 'Published, check 14+ days old' },
+          { value: 'unpinned', label: 'Published, not on the map' },
         ]}
         selected={[view]}
         onToggle={(value) => setView(value)}
@@ -324,9 +358,9 @@ export default function CurationListScreen() {
                   onPress={() => query.fetchNextPage()}
                 />
               ) : (
-                <ThemeText variant="caption" themeColor="textMuted">
+                <Text variant="footnote" tone="muted">
                   End of results ({events.length}).
-                </ThemeText>
+                </Text>
               )}
             </View>
           ) : null
@@ -357,13 +391,13 @@ function EventRow({ event, onPress }: { event: Event; onPress: () => void }) {
         },
       ]}
     >
-      <ThemeText variant="title" numberOfLines={2}>
+      <Text variant="headline" accessibilityRole="header" numberOfLines={2}>
         {event.title}
-      </ThemeText>
-      <ThemeText variant="caption" themeColor="textMuted">
+      </Text>
+      <Text variant="footnote" tone="muted">
         {eventTime(event.startAt, event.timezone)} · {place} ·{' '}
         {event.organizerName}
-      </ThemeText>
+      </Text>
       <EventStatusBadges event={event} />
     </Pressable>
   );
@@ -388,6 +422,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  headerActions: {
+    flexDirection: 'row',
     gap: 8,
     flexWrap: 'wrap',
   },

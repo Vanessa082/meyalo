@@ -100,3 +100,19 @@ export function instantToWallTime(iso: string, timeZone: string): string {
   const local = zoneParts(ms, timeZone);
   return `${local.year}-${pad(local.month)}-${pad(local.day)} ${pad(local.hour)}:${pad(local.minute)}`;
 }
+
+/** The calendar day, weekday and hour an instant falls on in a timezone.
+ *  `date` is that day's midnight UTC, so days compare and step by DAY_MS. */
+export function zonedDay(
+  iso: string,
+  timeZone: string,
+): { date: number; weekday: number; hour: number } | null {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms) || !isValidTimeZone(timeZone)) return null;
+  const local = zoneParts(ms, timeZone);
+  const date = Date.UTC(local.year, local.month - 1, local.day);
+  return { date, weekday: new Date(date).getUTCDay(), hour: local.hour };
+}
+
+/** One day in milliseconds, for durations (not calendar days in a zone). */
+export const DAY_MS = 24 * 60 * 60 * 1000;
