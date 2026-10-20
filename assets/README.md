@@ -44,13 +44,13 @@ assets/
 │   │   ├── meyalo-horizontal.svg    # Combined horizontal lockup (520x100)
 │   │   └── meyalo-stacked.svg       # Combined stacked lockup (400x320)
 │   ├── mark/                        # Standalone Symbol variants
-│   │   ├── meyalo-mark-teal.svg     # Brand Primary Teal (#087F73)
+│   │   ├── meyalo-mark-green.svg     # Forest green (#1C6B4A)
 │   │   ├── meyalo-mark-white.svg    # White (#FFFFFF) for dark backgrounds
-│   │   ├── meyalo-mark-ink.svg      # Deep Ink (#142428) for light backgrounds
+│   │   ├── meyalo-mark-ink.svg      # Deep Ink (#111312) for light backgrounds
 │   │   ├── meyalo-mark-black.svg    # Monochrome Black (#000000)
 │   │   └── meyalo-mark-*-*.png      # PNG steps (16px to 1024px)
 │   ├── logo/                        # Full Brand Lockup variants
-│   │   ├── horizontal/              # Horizontal (Teal Mark + Deep Ink Text)
+│   │   ├── horizontal/              # Horizontal (green mark + ink text)
 │   │   └── stacked/                 # Stacked (Light and Dark mode)
 │   ├── app-icon/                    # Platform App Icons
 │   │   ├── app-icon-*.png           # Multi-resolution square app icons
@@ -67,11 +67,11 @@ assets/
 │   ├── social/                      # Social media profiles & avatars
 │   │   └── avatar-*.png             # Profile pictures (400, 512, 1024px)
 │   └── splash/                      # Native mobile splash screens
-│       ├── splash-light.png         # Light mode splash (Canvas bg + Teal logo)
-│       └── splash-dark.png          # Dark mode splash (Deep Ink bg + White logo)
+│       ├── splash-light.png         # Light mode splash (canvas bg + green mark)
+│       └── splash-dark.png          # Dark mode splash (ink bg + lime mark)
 │
 ├── images/                          # Native build fallback references
-│   ├── android-icon-background.png  # Android background fill (#087F73)
+│   ├── android-icon-background.png  # Android background fill (#1C6B4A)
 │   ├── android-icon-foreground.png  # Android foreground symbol
 │   ├── android-icon-monochrome.png  # Android monochrome mask
 │   └── tabIcons/                    # Navigation bar tab bar icons
@@ -107,13 +107,14 @@ assets/
 * **`meyalo-stacked.svg`**: Stacked lockup (Symbol centered above lettering).
 
 #### 2. `assets/brand/mark/`
-* **`meyalo-mark-teal.svg` / `.png`**: Primary brand mark (`#087F73`). Best used on light backgrounds (`#F7F9F7`, `#FFFFFF`).
-* **`meyalo-mark-white.svg` / `.png`**: White mark (`#FFFFFF`). Best used on dark backgrounds (`#142428`, `#087F73`).
+* **`meyalo-mark-green.svg` / `.png`**: Primary brand mark (`#1C6B4A`). Best used on light backgrounds (`#F5F7F1`, `#FFFFFF`).
+* **`meyalo-mark-white.svg` / `.png`**: White mark (`#FFFFFF`). Best used on dark backgrounds (`#111312`, `#1C6B4A`).
+* **`meyalo-mark-lime.svg` / `.png`**: Lime mark (`#E8FF52`). The default mark on dark backgrounds (`#111312`).
 * **`meyalo-mark-ink.svg` / `black.svg`**: Deep Ink and Black monochromatic marks for print or high-contrast UI modes.
 
 #### 3. `assets/brand/app-icon/`
-* **`ios-icon-1024.png`**: Master 1024×1024 PNG with pre-baked `#087F73` teal background. Required by Apple App Store Connect.
-* **`adaptive-icon-foreground.png`**: 432×432 PNG with **100% transparent background**. Android places this over `backgroundColor: "#087F73"` and clips it to the system squircle/circle.
+* **`ios-icon-1024.png`**: Master 1024×1024 PNG with pre-baked `#1C6B4A` forest-green background and lime mark. Required by Apple App Store Connect.
+* **`adaptive-icon-foreground.png`**: 432×432 PNG with **100% transparent background**. Android places this over `backgroundColor: "#1C6B4A"` and clips it to the system squircle/circle.
 * **`monochrome-icon.png`**: Android 13+ Material You themed app icon mask.
 * **`app-icon-*.png`**: Downscaled steps (16px to 512px) for custom app launcher stores.
 
@@ -123,8 +124,8 @@ assets/
 * **`icon-192.png` & `icon-512.png`**: Web App Manifest icons for Progressive Web App (PWA) installation.
 
 #### 5. `assets/brand/splash/`
-* **`splash-light.png`**: Light mode native splash screen (`#F7F9F7` background with centered Teal logo).
-* **`splash-dark.png`**: Dark mode native splash screen (`#142428` background with centered White logo).
+* **`splash-light.png`**: Light mode native splash screen (`#F5F7F1` background with centered green mark).
+* **`splash-dark.png`**: Dark mode native splash screen (`#111312` background with centered lime mark).
 
 ---
 
@@ -144,7 +145,7 @@ export function Header() {
 
 // 2. Profile Avatar / Splash Overlay (Standalone Mark)
 export function ProfileBadge() {
-  return <MeyaloMark size={48} color="#087F73" />;
+  return <MeyaloMark size={48} color="#1C6B4A" />;
 }
 
 // 3. Footer or Welcome Hero (Stacked Logo)
@@ -177,7 +178,7 @@ Expo automatically reads the raster assets from `assets/brand/` to configure nat
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#087F73",
+        "backgroundColor": "#1C6B4A",
         "foregroundImage": "./assets/brand/app-icon/adaptive-icon-foreground.png",
         "monochromeImage": "./assets/brand/app-icon/monochrome-icon.png"
       }
@@ -189,11 +190,11 @@ Expo automatically reads the raster assets from `assets/brand/` to configure nat
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F7F9F7",
-          "image": "./assets/brand/mark/meyalo-mark-teal-512.png",
+          "backgroundColor": "#F5F7F1",
+          "image": "./assets/brand/mark/meyalo-mark-green-512.png",
           "imageWidth": 120,
           "dark": {
-            "backgroundColor": "#142428",
+            "backgroundColor": "#111312",
             "image": "./assets/brand/mark/meyalo-mark-white-512.png"
           }
         }
@@ -232,4 +233,4 @@ For Next.js / Web deployments, reference the favicons in `assets/brand/favicon/`
 | **Android Launcher Icon** | **432px Transparent PNG** | `assets/brand/app-icon/adaptive-icon-foreground.png` | Allows Android OS to apply adaptive squircle masks cleanly. |
 | **Web Browser Tab** | **32px PNG / ICO** | `assets/brand/favicon/favicon-32x32.png` | Lightweight, fast loading, supported by all browsers. |
 | **Social Media Profile** | **512px / 1024px PNG** | `assets/brand/social/avatar-512.png` | Perfectly centered mark with high contrast for profile circles. |
-| **Native Splash Screen** | **512px PNG + Theme BG** | `assets/brand/mark/meyalo-mark-teal-512.png` | Fast initial load before JS engine boots up. |
+| **Native Splash Screen** | **512px PNG + Theme BG** | `assets/brand/mark/meyalo-mark-green-512.png` | Fast initial load before JS engine boots up. |
