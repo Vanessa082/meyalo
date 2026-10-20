@@ -186,6 +186,56 @@ async function main() {
     .single();
   assert.equal(ownPlan.data.user_id, userA.id);
 
+  // Accounts (013): nothing is backed up before consent, consent is the
+  // caller's own, a backup returns only the caller's plans.
+  const consentRow = {
+    consent_version: '2026-10-20',
+    consent_language: 'en',
+    age_group: '18_plus',
+  };
+  const early = await userB.user.rpc('sync_account', {
+    p_plans: [],
+    p_profile: null,
+  });
+  assert.ok(early.error, 'no backup before consent');
+  const forged = await userB.user
+    .from('account_consents')
+    .insert({ ...consentRow, user_id: userA.id });
+  assert.ok(forged.error, 'no consent for someone else');
+  for (const who of [userA, userB]) {
+    const own = await who.user.from('account_consents').insert(consentRow);
+    assert.equal(own.error, null, 'a person records their own consent');
+  }
+  const backupB = await userB.user.rpc('sync_account', {
+    p_plans: [
+      {
+        event_id: published.data.id,
+        state: 'going',
+        state_changed_at: new Date().toISOString(),
+      },
+    ],
+    p_profile: null,
+  });
+  assert.equal(backupB.error, null, 'a backup succeeds after consent');
+  const backupA = await userA.user.rpc('sync_account', {
+    p_plans: [],
+    p_profile: null,
+  });
+  assert.equal(backupA.error, null);
+  assert.equal(
+    backupA.data.plans.length,
+    1,
+    "a backup returns only the caller's plans",
+  );
+  assert.equal(backupA.data.plans[0].state, 'saved');
+  const anonBackup = await anon.rpc('sync_account', {
+    p_plans: [],
+    p_profile: null,
+  });
+  assert.ok(anonBackup.error, 'anon cannot back up');
+  const records = await userA.user.from('account_deletions').select('id');
+  assert.ok(records.error, 'users cannot read deletion records');
+
   const nonAdminEdit = await userB.user
     .from('events')
     .update({ title: 'changed by user' })
@@ -199,12 +249,21 @@ async function main() {
     .single();
   assert.equal(title.data.title, `rls-published-${stamp}`);
 
-  const report = await anon.from('reports').insert({
+  const unconsented = await anon.from('reports').insert({
     event_id: published.data.id,
     reason: 'scam',
     note: 'rls',
   });
-  assert.equal(report.error, null, 'anon can file a report');
+  assert.ok(unconsented.error, 'a report without consent is refused');
+  const report = await anon.from('reports').insert({
+    event_id: published.data.id,
+    reason: 'scam',
+    note: 'rls',
+    consent_version: '2026-10-19',
+    consent_language: 'en',
+    age_group: '18_plus',
+  });
+  assert.equal(report.error, null, 'anon can file a report with consent');
   const reportRead = await anon.from('reports').select('id');
   assert.ok(reportRead.error, 'anon cannot read reports');
   const reportByUser = await userB.user.from('reports').select('id');
