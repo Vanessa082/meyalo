@@ -68,12 +68,12 @@ Those belong in server-side configuration (Edge Functions, EAS secrets for build
 
 ## Development build
 
-Expo Go cannot include native Google sign-in, Sign in with Apple, or the maps native module configuration. The project is set up for a development build:
+Expo Go runs most of the app (see the README for running it on a phone). It cannot include native Google sign-in, Sign in with Apple, or the release maps configuration. The project is set up for a development build:
 
 - `expo-dev-client` is installed and listed in `app.config.ts`
 - `ios.usesAppleSignIn` is enabled so the Sign in with Apple capability is in the binary
 - `eas.json` has a `development` profile (`developmentClient: true`)
-- Google and Apple sign-in libraries are not installed yet. They are added when authentication is implemented, which requires another native build
+- `expo-apple-authentication` is installed (Sign in with Apple, iOS). Google sign-in is not built yet; adding its library requires another native build
 
 Create a development build when you are ready to run it on a device or simulator:
 
