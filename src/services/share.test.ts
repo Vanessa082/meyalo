@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { EventCardData } from '../types/event.type.ts';
-import { buildShareText, whatsAppUrl } from './share.ts';
+import { buildShareText, whatsAppContactUrl, whatsAppUrl } from './share.ts';
 
 function event(overrides: Partial<EventCardData> = {}): EventCardData {
   return {
@@ -91,5 +91,18 @@ describe('whatsAppUrl', () => {
       whatsAppUrl('Hi & bye\nhttps://x.example/?a=1'),
       'https://wa.me/?text=Hi%20%26%20bye%0Ahttps%3A%2F%2Fx.example%2F%3Fa%3D1',
     );
+  });
+});
+
+describe('WhatsApp contact', () => {
+  it('opens a chat with the configured number and a ready message', () => {
+    assert.equal(
+      whatsAppContactUrl('237671492013', 'Hello Meyalo'),
+      'https://wa.me/237671492013?text=Hello%20Meyalo',
+    );
+  });
+
+  it('is unavailable without a number', () => {
+    assert.equal(whatsAppContactUrl(undefined, 'Hello'), null);
   });
 });

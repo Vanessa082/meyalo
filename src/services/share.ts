@@ -31,3 +31,13 @@ export function buildShareText(
 export function whatsAppUrl(text: string): string {
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
+
+/** A chat with Meyalo's WhatsApp number, message ready; null when unset. */
+export function whatsAppContactUrl(
+  number: string | undefined,
+  text: string,
+): string | null {
+  return number
+    ? `https://wa.me/${number}?text=${encodeURIComponent(text)}`
+    : null;
+}

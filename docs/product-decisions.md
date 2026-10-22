@@ -485,6 +485,29 @@ Sections, in order:
 - Auto-attached: app version, OS, app language. Never location.
 - Stored in the database (insert-only for clients via RLS), screenshot in private storage; rate-limited; reviewed in the admin tool (Feature 18).
 
+## 20. The Meyalo website (Phase 10) — Decided (2026-10-20)
+
+The web app already serves event pages, plan links, legal pages and `/submit`. The website adds what a visitor who has never heard of Meyalo needs, in the same brand, with no tracking, no cookies and no consent banner.
+
+**Address.** `https://meyalo.expo.app` until a domain is bought; switching is an environment change and a rebuild.
+
+**Home page (`/` on the web).** Phones keep today's behaviour (welcome or tabs). On the web, `/` becomes a home page:
+- What Meyalo is, in one sentence, and how events are checked (links to `/how-we-verify`).
+- "This week": up to 6 upcoming verified events from the last build, with "Updated <date>". No counts, no invented numbers; events that have started are never listed.
+- Get the app: a Google Play and an App Store button, each shown only when its store link is configured; otherwise "Coming soon to Google Play and the App Store". "Open Meyalo in your browser" goes to the web app.
+- For organizers: suggest an event (`/submit`), or forward it on WhatsApp.
+- Footer: Privacy, Terms, Delete account, How we verify, contact on WhatsApp, the WhatsApp Channel when configured.
+
+**Event lists for search engines.** `/events` (all upcoming verified events) and `/events/<city>` for each launch city, built at deploy time like the link previews, each event linking to its page. A `sitemap.xml` and `robots.txt` are generated when the site address is set. Private pages are never indexed: plan links, the console, sign-in and settings.
+
+**WhatsApp (Phase 7 follow-up).**
+- Contact: a "Chat with us on WhatsApp" link (`wa.me`) with a prefilled message, on the home page, `/submit` ("Forward us an event on WhatsApp") and the footer. The number is configuration (`EXPO_PUBLIC_CONTACT_WHATSAPP`), never in the code, so it can move to a WhatsApp Business number without a release. Shown only when set.
+- Channel: a "Follow our WhatsApp Channel" link when `EXPO_PUBLIC_WHATSAPP_CHANNEL_URL` is set (channels have no official API; posting stays manual).
+- Weekly digest: in the console, curators get the text of the next 7 days' verified events grouped by day, with each event's link, ready to copy into the Channel.
+- Not now: a bot that turns forwarded messages into suggestions (Meta Cloud API, paid, verified business).
+
+**Store links.** `EXPO_PUBLIC_PLAY_STORE_URL` and `EXPO_PUBLIC_APP_STORE_URL`, https only, each shown only when set.
+
 ## Domain & configuration — Decided (2026-10-02)
 
 - Every domain-dependent feature (event web pages, share links, friend plans, universal/app links) reads the public base URL from configuration (environment variable), never from hardcoded strings.

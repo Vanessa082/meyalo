@@ -26,6 +26,13 @@ export const publicEnv = {
   /** "true" once the translate-event function has a provider key
    *  (docs/environment.md). Until then the Translate action is hidden. */
   translationEnabled: process.env.EXPO_PUBLIC_TRANSLATION_ENABLED === 'true',
+  /** Website (docs/product-decisions.md, Feature 20). Each is shown only
+   *  when set, so nothing points at a store page or chat that does not exist. */
+  playStoreUrl: httpsOnly(process.env.EXPO_PUBLIC_PLAY_STORE_URL),
+  appStoreUrl: httpsOnly(process.env.EXPO_PUBLIC_APP_STORE_URL),
+  whatsappChannelUrl: httpsOnly(process.env.EXPO_PUBLIC_WHATSAPP_CHANNEL_URL),
+  /** International number for "Chat with us on WhatsApp", digits only. */
+  contactWhatsApp: whatsAppNumber(process.env.EXPO_PUBLIC_CONTACT_WHATSAPP),
 };
 
 /**
@@ -45,10 +52,22 @@ export function geocoderBaseUrl(raw: string | undefined): string | null {
   }
 }
 
-/** Legal links are shown only once a real https page is configured. */
-function httpsOnly(raw: string | undefined): string | undefined {
+/** Legal and store links are shown only once a real https page is configured. */
+export function httpsOnly(raw: string | undefined): string | undefined {
   const value = present(raw);
   return value && httpsHost(value) ? value : undefined;
+}
+
+/**
+ * A WhatsApp number in international form, kept as digits for wa.me links.
+ * Spaces, dashes, dots and a leading + are allowed; anything else, or fewer
+ * than 8 or more than 15 digits (E.164), reads as unset.
+ */
+export function whatsAppNumber(raw: string | undefined): string | undefined {
+  const value = present(raw);
+  if (!value || !/^\+?[\d\s().-]+$/.test(value)) return undefined;
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 8 && digits.length <= 15 ? digits : undefined;
 }
 
 export function requireSupabaseConfig(): { url: string; anonKey: string } {
