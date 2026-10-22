@@ -1,16 +1,36 @@
-import * as Notifications from 'expo-notifications';
+import type { NotificationResponse } from 'expo-notifications';
 import { Linking, Platform } from 'react-native';
 import type { ReminderPermission, ScheduledReminder } from './reminders.types';
 
 export type { ReminderPermission, ScheduledReminder } from './reminders.types';
 
+type NotificationsModule = typeof import('expo-notifications');
+
+/**
+ * expo-notifications, or null where its native module is missing. Expo Go
+ * on Android has no push parts since SDK 53, and loading the library there
+ * throws ("Cannot find native module 'ExpoTopicSubscriptionModule'"), which
+ * took the whole app down. Loaded inside a guard so reminders are simply
+ * unavailable there, as on the web; release builds include the module.
+ */
+function loadNotifications(): NotificationsModule | null {
+  try {
+    // A static import would throw while the app starts, before any guard.
+    return require('expo-notifications') as NotificationsModule;
+  } catch {
+    return null;
+  }
+}
+
+const Notifications = loadNotifications();
+
 const CHANNEL_ID = 'reminders';
 
 /** Local reminders only (docs/product-decisions.md, Feature 12). */
-export const remindersSupported = true;
+export const remindersSupported = Notifications !== null;
 
 // Shown while the app is open too; reminders are the only notifications.
-Notifications.setNotificationHandler({
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
@@ -20,6 +40,7 @@ Notifications.setNotificationHandler({
 });
 
 export async function reminderPermission(): Promise<ReminderPermission> {
+  if (!Notifications) return 'none';
   const status = await Notifications.getPermissionsAsync();
   if (status.granted) return 'granted';
   return status.canAskAgain ? 'ask' : 'denied';
@@ -27,16 +48,19 @@ export async function reminderPermission(): Promise<ReminderPermission> {
 
 /** Shows the system prompt. Android 13 shows it only once a channel exists. */
 export async function requestReminderPermission(): Promise<boolean> {
-  await ensureChannel();
+  if (!Notifications) return false;
+  await ensureChannel(Notifications);
   const status = await Notifications.requestPermissionsAsync();
   return status.granted;
 }
 
-async function ensureChannel(): Promise<void> {
+async function ensureChannel(
+  notifications: NotificationsModule,
+): Promise<void> {
   if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+  await notifications.setNotificationChannelAsync(CHANNEL_ID, {
     name: 'Reminders',
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: notifications.AndroidImportance.DEFAULT,
   });
 }
 
@@ -47,9 +71,10 @@ async function ensureChannel(): Promise<void> {
 export async function syncReminders(
   reminders: readonly ScheduledReminder[],
 ): Promise<void> {
+  if (!Notifications) return;
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (reminders.length === 0) return;
-  await ensureChannel();
+  await ensureChannel(Notifications);
   for (const reminder of reminders) {
     await Notifications.scheduleNotificationAsync({
       identifier: reminder.id,
@@ -76,20 +101,22 @@ export function openReminderSettings(): Promise<void> {
 export function onReminderOpened(
   onOpen: (eventId: string) => void,
 ): () => void {
-  const open = (response: Notifications.NotificationResponse | null) => {
+  const notifications = Notifications;
+  if (!notifications) return () => {};
+  const open = (response: NotificationResponse | null) => {
     if (
-      response?.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER
+      response?.actionIdentifier !== notifications.DEFAULT_ACTION_IDENTIFIER
     ) {
       return;
     }
     const eventId = response.notification.request.content.data?.eventId;
     // Handled once: otherwise every launch would reopen the same event.
-    Notifications.clearLastNotificationResponse();
+    notifications.clearLastNotificationResponse();
     if (typeof eventId === 'string') onOpen(eventId);
   };
   // A tap that launched the app arrives before any listener.
-  open(Notifications.getLastNotificationResponse());
+  open(notifications.getLastNotificationResponse());
   const subscription =
-    Notifications.addNotificationResponseReceivedListener(open);
+    notifications.addNotificationResponseReceivedListener(open);
   return () => subscription.remove();
 }

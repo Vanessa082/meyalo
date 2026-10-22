@@ -6,6 +6,7 @@ import {
   Manrope_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/manrope';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -20,7 +21,10 @@ import { DataProvider } from '@/lib/data-provider';
 SplashScreen.preventAutoHideAsync();
 // A short fade into the first screen instead of a cut (iOS; Android uses the
 // duration only). The splash colours match the app backgrounds.
-SplashScreen.setOptions({ duration: 250, fade: true });
+// Expo Go shows its own loading screen and only warns about this call.
+if (Constants.executionEnvironment !== ExecutionEnvironment.StoreClient) {
+  SplashScreen.setOptions({ duration: 250, fade: true });
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
