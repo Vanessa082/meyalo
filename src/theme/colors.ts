@@ -1,12 +1,21 @@
 export const Palette = {
   // Black, white and one brand colour: blue (owner's decision, 2026-10-19,
   // "like Meta's apps"). Change the brand here; names stay. See BRAND.md.
-  brand: '#1460D0',
-  brandPressed: '#124FB0',
+  // Brighter blue with a gradient on filled surfaces (owner's decision,
+  // 2026-10-20): #0866FF to #0055D4; white text passes on both ends.
+  /** Solid brand for text, icons and outlines: 4.8:1 or more on white, the
+   *  soft tint and the canvas. */
+  brand: '#075EEB',
+  /** The gradient on filled brand surfaces, top to bottom. */
+  brandLight: '#0866FF',
+  brandDeep: '#0055D4',
+  brandPressed: '#0049B8',
   brandSoft: '#E8F0FE',
   /** The brand lightened to read on the dark theme (5.4:1 or more on every
    *  dark surface). */
   brandBright: '#5B9BFF',
+  /** Top of the dark-theme gradient, with ink text (7.7:1 or more). */
+  brandBrightLight: '#7AB2FF',
   brandBrightPressed: '#4C8DF6',
   /** Neutral near-black: text on light, background on dark, app icon. */
   ink: '#111312',
@@ -55,6 +64,10 @@ export const Colors = {
     /** Any selected chip, segment or filter: a brand pill. */
     selected: Palette.brand,
     onSelected: Palette.white,
+    /** Filled brand surfaces (buttons, selected chips): a top-to-bottom
+     *  gradient. Solid `primary` stays for text, icons and outlines. */
+    gradientStart: Palette.brandLight,
+    gradientEnd: Palette.brandDeep,
     /** The logo mark: brand on light, brandBright on dark. */
     brandMark: Palette.brand,
 
@@ -106,6 +119,8 @@ export const Colors = {
     onPrimary: Palette.ink,
     selected: Palette.brandBright,
     onSelected: Palette.ink,
+    gradientStart: Palette.brandBrightLight,
+    gradientEnd: Palette.brandBrightPressed,
     brandMark: Palette.brandBright,
 
     background: Palette.ink,

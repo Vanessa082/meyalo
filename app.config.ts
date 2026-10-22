@@ -58,7 +58,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: 'com.meyalo.app',
     adaptiveIcon: {
-      backgroundColor: '#111312',
+      // White mark on the brand blue, like the iOS icon (2026-10-20).
+      backgroundColor: '#075EEB',
+      backgroundImage: './assets/brand/app-icon/adaptive-icon-background.png',
       foregroundImage: './assets/brand/app-icon/adaptive-icon-foreground.png',
       monochromeImage: './assets/brand/app-icon/monochrome-icon.png',
     },
@@ -94,12 +96,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#FFFFFF',
-        image: './assets/brand/mark/meyalo-mark-brand-512.png',
+        // The brand blue with the white mark, in light and dark mode alike,
+        // so the start of the app matches its icon (2026-10-20).
+        backgroundColor: '#075EEB',
+        image: './assets/brand/mark/meyalo-mark-white-512.png',
         imageWidth: 120,
         dark: {
-          backgroundColor: '#111312',
-          image: './assets/brand/mark/meyalo-mark-brand-bright-512.png',
+          backgroundColor: '#075EEB',
+          image: './assets/brand/mark/meyalo-mark-white-512.png',
         },
       },
     ],
@@ -124,7 +128,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-notifications',
       {
         icon: './assets/brand/app-icon/monochrome-icon.png',
-        color: '#1460D0',
+        color: '#075EEB',
       },
     ],
     googleMapsApiKey

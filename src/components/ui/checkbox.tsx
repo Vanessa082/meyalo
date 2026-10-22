@@ -2,6 +2,7 @@ import { Check } from 'lucide-react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Radius, Spacing, TouchTargets } from '@/theme';
+import { BrandFill } from './brand-fill';
 import { focusRing } from './focus';
 import { Text } from './text';
 
@@ -34,10 +35,12 @@ export function Checkbox({ label, checked, onChange, testID }: CheckboxProps) {
           styles.box,
           {
             backgroundColor: checked ? colors.selected : colors.surface,
-            borderColor: checked ? colors.selected : colors.border,
+            borderColor: checked ? 'transparent' : colors.border,
           },
+          checked && styles.clip,
         ]}
       >
+        {checked ? <BrandFill /> : null}
         {checked ? (
           <Check size={16} strokeWidth={3} color={colors.onSelected} />
         ) : null}
@@ -67,5 +70,8 @@ const styles = StyleSheet.create({
   },
   label: {
     flex: 1,
+  },
+  clip: {
+    overflow: 'hidden',
   },
 });

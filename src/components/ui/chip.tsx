@@ -2,6 +2,7 @@ import { Check, Plus } from 'lucide-react-native';
 import { Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Radius, Spacing, TouchTargets } from '@/theme';
+import { BrandFill } from './brand-fill';
 import { focusRing } from './focus';
 import { Text } from './text';
 
@@ -46,11 +47,13 @@ export function Chip({
             : state.pressed
               ? colors.surfaceSunken
               : colors.surface,
-          borderColor: selected ? colors.selected : colors.border,
+          borderColor: selected ? 'transparent' : colors.border,
         },
+        selected && styles.clip,
         focusRing(state, colors),
       ]}
     >
+      {selected ? <BrandFill /> : null}
       <Glyph
         size={16}
         strokeWidth={selected ? 2.5 : 2}
@@ -78,5 +81,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: Radius.full,
     borderWidth: 1.5,
+  },
+  clip: {
+    overflow: 'hidden',
   },
 });

@@ -10,6 +10,7 @@ import {
 import { useTheme } from '@/hooks/use-theme';
 import { Radius, Spacing, TextStyles } from '@/theme';
 import type { ThemeColors } from '@/theme/colors';
+import { BrandFill } from './brand-fill';
 import { focusRing } from './focus';
 import { Text } from './text';
 
@@ -121,6 +122,8 @@ export function Button({
   const colors = useTheme();
   const interactive = !disabled && !loading;
   const palette = variantColors(variant, colors, disabled);
+  // The main action carries the brand gradient; others stay flat.
+  const gradient = variant === 'primary' && !disabled;
 
   return (
     <Pressable
@@ -141,25 +144,35 @@ export function Button({
           borderColor: palette.border,
         },
         fullWidth && styles.fullWidth,
+        gradient && styles.clip,
         focusRing(state, colors),
         style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator size="small" color={palette.label} />
-      ) : (
+      {(state) => (
         <>
-          {icon && iconPosition === 'start' ? icon : null}
-          {children ?? (
-            <Text
-              style={[TextStyles.label, { color: palette.label }, textStyle]}
-              numberOfLines={2}
-              align="center"
-            >
-              {title}
-            </Text>
+          {gradient ? <BrandFill pressed={state.pressed} /> : null}
+          {loading ? (
+            <ActivityIndicator size="small" color={palette.label} />
+          ) : (
+            <>
+              {icon && iconPosition === 'start' ? icon : null}
+              {children ?? (
+                <Text
+                  style={[
+                    TextStyles.label,
+                    { color: palette.label },
+                    textStyle,
+                  ]}
+                  numberOfLines={2}
+                  align="center"
+                >
+                  {title}
+                </Text>
+              )}
+              {icon && iconPosition === 'end' ? icon : null}
+            </>
           )}
-          {icon && iconPosition === 'end' ? icon : null}
         </>
       )}
     </Pressable>
@@ -177,5 +190,8 @@ const styles = StyleSheet.create({
   },
   fullWidth: {
     alignSelf: 'stretch',
+  },
+  clip: {
+    overflow: 'hidden',
   },
 });

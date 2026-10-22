@@ -35,6 +35,11 @@ const TEXT_PAIRS: [Role, Role][] = [
   ['highlight', 'highlightSoft'],
   ['onHighlight', 'highlight'],
   ['text', 'highlightSoft'],
+  // The brand gradient behind button and chip text: both ends must pass.
+  ['onPrimary', 'gradientStart'],
+  ['onPrimary', 'gradientEnd'],
+  ['onSelected', 'gradientStart'],
+  ['onSelected', 'gradientEnd'],
 ];
 
 describe('colour contrast', () => {

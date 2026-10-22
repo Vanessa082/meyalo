@@ -26,6 +26,7 @@ import { ReportSheet } from '@/components/event/report-sheet';
 import { useSaveToggle } from '@/components/event/use-save-toggle';
 import { PermissionPrimer } from '@/components/privacy/permission-primer';
 import { useReminders } from '@/components/privacy/reminders-provider';
+import { BrandFill } from '@/components/ui/brand-fill';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EventMap } from '@/components/ui/event-map';
@@ -423,9 +424,11 @@ function EventDetailScreen() {
                     backgroundColor: isGoing
                       ? colors.primary
                       : colors.surfaceSecondary,
+                    overflow: 'hidden',
                   },
                 ]}
               >
+                {isGoing ? <BrandFill /> : null}
                 <Pop active={isGoing}>
                   <CalendarCheck
                     size={20}

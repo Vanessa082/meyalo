@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { BrandFill } from '@/components/ui/brand-fill';
 import { Stack } from '@/components/ui/stack';
 import { Text } from '@/components/ui/text';
 import { useTheme } from '@/hooks/use-theme';
@@ -90,7 +91,10 @@ export function MonthCalendar({
                 <View
                   style={[
                     styles.number,
-                    isSelected && { backgroundColor: colors.primary },
+                    isSelected && {
+                      backgroundColor: colors.primary,
+                      overflow: 'hidden',
+                    },
                     day.isToday &&
                       !isSelected && {
                         borderWidth: 1,
@@ -98,6 +102,7 @@ export function MonthCalendar({
                       },
                   ]}
                 >
+                  {isSelected ? <BrandFill /> : null}
                   <Text
                     variant="callout"
                     weight={day.isToday ? 'bold' : undefined}

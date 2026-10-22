@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Radius, Spacing } from '@/theme';
+import { BrandFill } from './brand-fill';
 import { focusRing } from './focus';
 import { Text } from './text';
 
@@ -46,9 +47,11 @@ export function SegmentedControl<T extends string>({
                 backgroundColor: selected ? colors.selected : 'transparent',
                 borderColor: 'transparent',
               },
+              selected && styles.clip,
               focusRing(state, colors),
             ]}
           >
+            {selected ? <BrandFill /> : null}
             <Text
               variant="label"
               weight={selected ? 'semiBold' : 'medium'}
@@ -79,5 +82,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  clip: {
+    overflow: 'hidden',
   },
 });

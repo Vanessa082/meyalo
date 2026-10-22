@@ -17,7 +17,7 @@ assets/brand/
 │   ├── meyalo-horizontal.svg    # Primary logo lockup
 │   └── meyalo-stacked.svg       # Stacked logo lockup
 ├── mark/                        # Monochromatic Symbol SVG + PNG variants
-│   ├── meyalo-mark-brand.svg    # Brand blue (#1460D0), on light backgrounds
+│   ├── meyalo-mark-brand.svg    # Brand blue (#075EEB), on light backgrounds
 │   ├── meyalo-mark-brand-bright.svg # Brand bright (#5B9BFF), on dark backgrounds
 │   ├── meyalo-mark-ink.svg      # Ink (#111312)
 │   ├── meyalo-mark-white.svg    # White (#FFFFFF)
@@ -58,7 +58,7 @@ once in `src/theme/colors.ts` (`Palette.brand*`); names never say the hue.
 
 | Name | Hex | Role | Contrast |
 | :--- | :--- | :--- | :--- |
-| **Brand blue** | `#1460D0` | Primary buttons and selected chips (white text), links, the date on cards, the organiser-confirmed seal, on light | white on blue 5.8:1 |
+| **Brand blue** | `#075EEB` (gradient `#0866FF` to `#0055D4` on filled surfaces) | Primary buttons and selected chips (white text), links, the date on cards, the organiser-confirmed seal, on light | white on blue 5.8:1 |
 | **Brand bright** | `#5B9BFF` | The same roles on dark (ink text on its fills) | 6.7:1 on ink |
 | **Ink** | `#111312` | Text on light, background on dark | 18.6:1 on white |
 | **White** | `#FFFFFF` | Background on light | n/a |
