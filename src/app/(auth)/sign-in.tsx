@@ -9,6 +9,7 @@ import { InlineMessage } from '@/components/ui/inline-message';
 import { Page } from '@/components/ui/page';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
+import { NoIndex } from '@/components/website/no-index';
 import { useAppleSignIn, useSendCode } from '@/hooks/use-account';
 import { useConsentForm } from '@/hooks/use-consent';
 import { useMarkEnteredApp } from '@/hooks/use-discovery-profile';
@@ -83,6 +84,7 @@ export default function SignInScreen() {
 
   return (
     <Page width="readable">
+      <NoIndex />
       <View style={styles.block}>
         <Text variant="title1" accessibilityRole="header">
           {t('account.signInTitle')}

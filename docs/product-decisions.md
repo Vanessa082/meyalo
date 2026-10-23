@@ -508,6 +508,8 @@ The web app already serves event pages, plan links, legal pages and `/submit`. T
 
 **Store links.** `EXPO_PUBLIC_PLAY_STORE_URL` and `EXPO_PUBLIC_APP_STORE_URL`, https only, each shown only when set.
 
+Built 2026-10-22: the home page (`src/components/website/web-home.tsx`, shown at `/` on the web only), `/events` and `/events/<city>` (`src/app/events/`), the list, sitemap and robots data written by `scripts/build-event-previews.mjs` (`src/services/event-listing.ts`), `noindex` on private pages, WhatsApp on the home page, footer and `/submit`, and the console's Weekly post (`src/services/weekly-digest.ts`, `src/app/console/digest.tsx`).
+
 ## Domain & configuration — Decided (2026-10-02)
 
 - Every domain-dependent feature (event web pages, share links, friend plans, universal/app links) reads the public base URL from configuration (environment variable), never from hardcoded strings.

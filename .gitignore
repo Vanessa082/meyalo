@@ -45,3 +45,6 @@ example
 
 # Built by scripts/build-event-previews.mjs (pnpm build:web); never commit.
 src/generated/event-previews.json
+# Written by scripts/build-event-previews.mjs for the configured address.
+public/sitemap.xml
+public/robots.txt

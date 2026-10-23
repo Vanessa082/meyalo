@@ -71,7 +71,10 @@ npx eas-cli env:set --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <publishable ke
 npx eas-cli env:set --name EXPO_PUBLIC_APP_BASE_URL --value https://<name>.expo.app --environment production --visibility plaintext
 npx eas-cli env:set --name EXPO_PUBLIC_PRIVACY_POLICY_URL --value https://<name>.expo.app/privacy --environment production --visibility plaintext
 npx eas-cli env:set --name EXPO_PUBLIC_TERMS_URL --value https://<name>.expo.app/terms --environment production --visibility plaintext
+npx eas-cli env:set --name EXPO_PUBLIC_CONTACT_WHATSAPP --value "+237 6XX XX XX XX" --environment production --visibility plaintext
 ```
+
+Optional, each shown on the website only once set: `EXPO_PUBLIC_PLAY_STORE_URL` and `EXPO_PUBLIC_APP_STORE_URL` (after the apps are published) and `EXPO_PUBLIC_WHATSAPP_CHANNEL_URL` (after the Channel exists). The WhatsApp number is shown publicly; a separate WhatsApp Business number keeps a personal line private.
 
 These values are public by design (they ship in the app); the database rules protect the data. Never put the service-role key or any provider key here.
 
@@ -83,7 +86,7 @@ pnpm build:web
 npx eas-cli deploy --prod
 ```
 
-`pnpm build:web` also writes each upcoming event's link preview page, so **rebuild and deploy at least once a day**, for example with a scheduled CI job; new events otherwise share without a preview. Without `--prod`, `eas deploy` publishes a preview address you can check first. A custom domain needs a paid Expo plan and is set up in the EAS dashboard.
+`pnpm build:web` also writes each upcoming event's link preview page, the home page's "Coming up" list, the `/events` and `/events/<city>` pages, `sitemap.xml` and `robots.txt` (only when `EXPO_PUBLIC_APP_BASE_URL` is set), so **rebuild and deploy at least once a day**, for example with a scheduled CI job; new events otherwise share without a preview. Without `--prod`, `eas deploy` publishes a preview address you can check first. A custom domain needs a paid Expo plan and is set up in the EAS dashboard.
 
 ## 3. Apps (EAS Build and Submit)
 
@@ -129,3 +132,7 @@ The first Android submission needs a Google Play service account key; the first 
 4. Website deployed with the production variables; `/privacy`, `/terms`, `/delete-account` open.
 5. Store listings: privacy labels and data safety forms match the Privacy Policy; the account deletion URL is `<website>/delete-account`.
 6. The open points in `docs/review-guide-2026-10-20.md` and the `[UNVERIFIED]` marks in `src/content/legal/` are resolved or accepted.
+
+## The weekly WhatsApp post
+
+In the console, **Weekly post** shows the next 7 days' published events as text, in French or English, with links. Copy it into the WhatsApp Channel (Channels have no API, so this stays manual). It needs `EXPO_PUBLIC_APP_BASE_URL` for the links.

@@ -1,5 +1,6 @@
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
+import { MessageCircle } from 'lucide-react-native';
 import { useState } from 'react';
 import { Share, StyleSheet, View } from 'react-native';
 import { ConsentBlock } from '@/components/consent/consent-block';
@@ -8,10 +9,12 @@ import { Button } from '@/components/ui/button';
 import { InlineMessage } from '@/components/ui/inline-message';
 import { Page } from '@/components/ui/page';
 import { Text } from '@/components/ui/text';
-import { publicUrl } from '@/config/env';
+import { publicEnv, publicUrl } from '@/config/env';
 import { useConsentForm } from '@/hooks/use-consent';
 import { useSubmitEvent } from '@/hooks/use-supply';
+import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/i18n/locale-provider';
+import { whatsAppContactUrl } from '@/services/share';
 import { isSupplyError } from '@/services/supply';
 import { Spacing } from '@/theme';
 
@@ -21,6 +24,12 @@ export default function SubmitScreen() {
   const { t } = useTranslation();
   const submit = useSubmitEvent();
   const consentForm = useConsentForm();
+  const colors = useTheme();
+  // "Forward us an event on WhatsApp" when the contact number is set.
+  const whatsApp = whatsAppContactUrl(
+    publicEnv.contactWhatsApp,
+    t('site.forwardMessage'),
+  );
   const [sourceUrl, setSourceUrl] = useState('');
   const [description, setDescription] = useState('');
   const [note, setNote] = useState('');
@@ -92,6 +101,14 @@ export default function SubmitScreen() {
             {t('submit.intro')}
           </Text>
           <InlineMessage tone="info" message={t('submit.whatQualifies')} />
+          {whatsApp ? (
+            <Button
+              title={t('site.forwardWhatsApp')}
+              variant="ghost"
+              icon={<MessageCircle size={18} color={colors.primary} />}
+              onPress={() => void Linking.openURL(whatsApp)}
+            />
+          ) : null}
           <SubmitField
             label={t('submit.linkLabel')}
             hint={t('submit.linkHint')}

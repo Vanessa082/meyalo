@@ -9,6 +9,7 @@ import {
 } from '@/components/console/console-ui';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { NoIndex } from '@/components/website/no-index';
 import { useCuratorSession } from '@/hooks/use-curator-session';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -16,7 +17,17 @@ import { useTheme } from '@/hooks/use-theme';
  * Curation console. Showing or hiding screens here is a convenience; every
  * read and write is still decided by Row Level Security on the session.
  */
+/** The console is private: never indexed by search engines. */
 export default function ConsoleLayout() {
+  return (
+    <>
+      <NoIndex />
+      <ConsoleGate />
+    </>
+  );
+}
+
+function ConsoleGate() {
   const colors = useTheme();
   const curator = useCuratorSession();
 

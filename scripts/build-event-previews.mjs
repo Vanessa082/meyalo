@@ -1,5 +1,6 @@
 /**
- * Writes src/generated/event-previews.json: link-preview data for every
+ * Writes src/generated/event-previews.json: link-preview data and the
+ * website's event list (docs/product-decisions.md, Feature 20) for every
  * upcoming published event, read with the public (anon) key, exactly as the
  * app sees them. Run before `expo export` (pnpm build:web) so each event page
  * gets its own Open Graph tags. Fails loudly when Supabase is configured but
@@ -8,13 +9,21 @@
  * Uses EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY from the
  * environment, else from .env. Only public, published event data is read.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 
 const OUT = new URL('../src/generated/event-previews.json', import.meta.url);
 const LIMIT = 100;
 mkdirSync(new URL('../src/generated/', import.meta.url), { recursive: true });
 
-const EMPTY = `${JSON.stringify({ generatedAt: null, events: {} }, null, 2)}\n`;
+const EMPTY = `${JSON.stringify({ generatedAt: null, events: {}, listing: [] }, null, 2)}\n`;
+const SITEMAP = new URL('../public/sitemap.xml', import.meta.url);
+const ROBOTS = new URL('../public/robots.txt', import.meta.url);
 
 // postinstall: make sure the file exists so a fresh clone typechecks and
 // bundles, without touching Supabase.
@@ -42,6 +51,10 @@ const { describeEventCard, toEventCard } = await import(
 );
 const { createLocalizer } = await import('../src/i18n/translate.ts');
 const { toEventPreview } = await import('../src/services/event-preview.ts');
+const { buildRobots, buildSitemap, toListingItem } = await import(
+  '../src/services/event-listing.ts'
+);
+const { normalizeBaseUrl } = await import('../src/config/env.ts');
 const { createEventRepository } = await import(
   '../src/services/event-repository.ts'
 );
@@ -75,10 +88,33 @@ const events = Object.fromEntries(
     return [preview.id, preview];
   }),
 );
+const listing = page.items.map((event) => toListingItem(toEventCard(event)));
 writeFileSync(
   OUT,
-  `${JSON.stringify({ generatedAt: new Date().toISOString(), events }, null, 2)}\n`,
+  `${JSON.stringify({ generatedAt: new Date().toISOString(), events, listing }, null, 2)}\n`,
 );
+
+// Search files need the public address. Without it, remove old copies so a
+// build never ships a sitemap pointing at another address.
+const baseUrl = normalizeBaseUrl(process.env.EXPO_PUBLIC_APP_BASE_URL);
+if (baseUrl) {
+  const cityIds = [
+    ...new Set(listing.map((item) => item.cityId).filter(Boolean)),
+  ];
+  writeFileSync(
+    SITEMAP,
+    buildSitemap(baseUrl, {
+      cityIds,
+      eventIds: listing.map((item) => item.id),
+    }),
+  );
+  writeFileSync(ROBOTS, buildRobots(baseUrl));
+  console.log(`Wrote sitemap.xml and robots.txt for ${baseUrl}.`);
+} else {
+  for (const file of [SITEMAP, ROBOTS]) {
+    if (existsSync(file)) unlinkSync(file);
+  }
+}
 console.log(
   `Wrote ${page.items.length} event previews${page.nextCursor ? ` (first ${LIMIT}; more exist)` : ''}.`,
 );

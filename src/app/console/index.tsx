@@ -171,6 +171,12 @@ export default function CurationListScreen() {
             onPress={() => router.push('/console/coverage')}
           />
           <Button
+            title="Weekly post"
+            variant="outline"
+            size="small"
+            onPress={() => router.push('/console/digest')}
+          />
+          <Button
             title="New event"
             size="small"
             onPress={() => router.push('/console/new')}

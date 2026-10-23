@@ -7,6 +7,7 @@ import { InlineMessage } from '@/components/ui/inline-message';
 import { Page } from '@/components/ui/page';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
+import { NoIndex } from '@/components/website/no-index';
 import { useSendCode, useVerifyCode } from '@/hooks/use-account';
 import { useMarkEnteredApp } from '@/hooks/use-discovery-profile';
 import { useTranslation } from '@/i18n/locale-provider';
@@ -40,6 +41,7 @@ export default function VerifyScreen() {
   if (!pending) {
     return (
       <Page width="readable">
+        <NoIndex />
         <View style={styles.block}>
           <InlineMessage tone="info" message={t('account.startAgain')} />
           <Button
@@ -84,6 +86,7 @@ export default function VerifyScreen() {
 
   return (
     <Page width="readable">
+      <NoIndex />
       <View style={styles.block}>
         <Text variant="title1" accessibilityRole="header">
           {t('account.verifyTitle')}

@@ -74,6 +74,17 @@ pnpm exec expo run:ios       # macOS with Xcode
 
 Sign-in uses a 6-digit email code. Locally, emails never leave your computer: read them in Mailpit at http://127.0.0.1:54324.
 
+### 6. The website
+
+On the web, `/` is the website home page, `/events` and `/events/<city>` list upcoming events, and the app opens from "Open Meyalo in your browser". The lists come from the last build:
+
+```bash
+eval "$(pnpm dlx supabase status -o env)"
+EXPO_PUBLIC_SUPABASE_URL=$API_URL EXPO_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY node scripts/build-event-previews.mjs
+```
+
+Then restart `pnpm web`. Set `EXPO_PUBLIC_APP_BASE_URL` for that command to also write `sitemap.xml` and `robots.txt`.
+
 ## Checks
 
 Run these before opening a pull request. They must all pass.

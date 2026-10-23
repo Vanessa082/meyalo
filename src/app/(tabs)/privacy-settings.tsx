@@ -14,6 +14,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Stack } from '@/components/ui/stack';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
+import { NoIndex } from '@/components/website/no-index';
 import { useAgeGroup, useSetAgeGroup } from '@/hooks/use-consent';
 import { useClearDeviceData } from '@/hooks/use-device-data';
 import { useTheme } from '@/hooks/use-theme';
@@ -51,6 +52,7 @@ export default function PrivacySettingsScreen() {
 
   return (
     <Page width="readable">
+      <NoIndex />
       <PageHeader
         title={t('privacySettings.title')}
         subtitle={t('privacySettings.subtitle')}
