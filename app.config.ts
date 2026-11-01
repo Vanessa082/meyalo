@@ -27,6 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'meyalo',
   slug: 'meyalo',
+  owner: 'meyalo237',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/brand/app-icon/app-icon-1024.png',
@@ -138,5 +139,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
+  },
+  extra: {
+    ...config.extra,
+    eas: { projectId: 'c66e98c4-842a-4bbc-abc4-b17fb5303fe1' },
   },
 });
