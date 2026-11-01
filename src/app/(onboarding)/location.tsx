@@ -1,323 +1,245 @@
 import { useRouter } from 'expo-router';
+import { useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LayoutAnimationConfig,
+  LinearTransition,
+} from 'react-native-reanimated';
 import {
-  Building2,
-  Globe,
-  Layers,
-  MapPin,
-  Navigation,
-} from 'lucide-react-native';
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Screen } from '@/components/ui/screen';
-import { ThemeText } from '@/components/ui/theme-text';
+  ChoiceGroup,
+  OnboardingStep,
+} from '@/components/onboarding/onboarding-step';
+import { useOnboardingBack } from '@/components/onboarding/use-onboarding-step';
+import { Chip } from '@/components/ui/chip';
+import { SearchInput } from '@/components/ui/search-input';
+import { Text } from '@/components/ui/text';
+import {
+  type City,
+  isQuickPickCity,
+  QUICK_PICK_CITIES,
+  searchCities,
+} from '@/config/discovery/cities';
+import {
+  useDiscoveryProfile,
+  useUpdateDiscoveryProfile,
+} from '@/hooks/use-discovery-profile';
 import { useTheme } from '@/hooks/use-theme';
-import { DiscoveryProfileService } from '@/services/discovery-profile.service';
-import type { EventFormatPreference } from '@/types/discovery-profile';
+import { useTranslation } from '@/i18n/locale-provider';
+import { Duration, Radius, Spacing, TouchTargets } from '@/theme';
+import type {
+  DiscoveryArea,
+  FormatPreference,
+  LocalDiscoveryProfile,
+} from '@/types/discovery-profile';
 
-const CITIES = [
-  {
-    id: 'yaounde',
-    name: 'Yaoundé',
-    subtitle: 'Capital, Policy, Finance & Government Hub',
-  },
-  {
-    id: 'douala',
-    name: 'Douala',
-    subtitle: 'Economic Capital, Trade, Logistics & Industry',
-  },
-  {
-    id: 'buea',
-    name: 'Buea',
-    subtitle: 'Silicon Mountain, Tech Innovation & Startups',
-  },
-  {
-    id: 'bamenda',
-    name: 'Bamenda',
-    subtitle: 'Education, Agriculture & Community Hub',
-  },
-  {
-    id: 'other',
-    name: 'Other City / Global',
-    subtitle: 'Discover online & regional growth opportunities',
-  },
-];
+const MAX_RESULTS = 6;
+const reveal = FadeIn.duration(Duration.state);
+const hide = FadeOut.duration(Duration.press);
+const settle = LinearTransition.duration(Duration.state);
 
-const FORMAT_PREFERENCES: {
-  id: string;
-  label: string;
-  badge?: string;
-  formats: EventFormatPreference[];
-  icon: typeof Layers;
-}[] = [
-  {
-    id: 'both',
-    label: 'Physical + Online',
-    badge: 'Recommended',
-    formats: ['in_person', 'virtual', 'hybrid'],
-    icon: Layers,
-  },
-  {
-    id: 'physical',
-    label: 'Physical Only',
-    formats: ['in_person', 'hybrid'],
-    icon: Building2,
-  },
-  {
-    id: 'virtual',
-    label: 'Online Only',
-    formats: ['virtual'],
-    icon: Globe,
-  },
-];
+export default function WhereAndHowScreen() {
+  const { data: profile, isPending } = useDiscoveryProfile();
+  if (isPending) return null;
+  return <WhereAndHowStep profile={profile ?? null} />;
+}
 
-export default function LocationOnboardingScreen() {
-  const colors = useTheme();
+function WhereAndHowStep({
+  profile,
+}: {
+  profile: LocalDiscoveryProfile | null;
+}) {
   const router = useRouter();
+  const { t } = useTranslation();
+  const onBack = useOnboardingBack('/(onboarding)/welcome');
+  const update = useUpdateDiscoveryProfile();
+  const searchRef = useRef<TextInput>(null);
 
-  const [selectedCityId, setSelectedCityId] = useState<string>('yaounde');
-  const [selectedFormatId, setSelectedFormatId] = useState<string>('both');
+  const [area, setArea] = useState<DiscoveryArea | null>(profile?.area ?? null);
+  const [format, setFormat] = useState<FormatPreference | null>(
+    profile?.format ?? null,
+  );
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState('');
 
-  const handleContinue = async () => {
-    const cityObj = CITIES.find((c) => c.id === selectedCityId) ?? CITIES[0];
-    const formatObj =
-      FORMAT_PREFERENCES.find((f) => f.id === selectedFormatId) ??
-      FORMAT_PREFERENCES[0];
+  const otherCity =
+    area?.kind === 'city' && !isQuickPickCity(area.city.id) ? area.city : null;
+  const onlineOnly = area?.kind === 'online_only';
+  const results = useMemo(
+    () => searchCities(query).slice(0, MAX_RESULTS),
+    [query],
+  );
 
-    await DiscoveryProfileService.saveProfile({
-      location: {
-        cityId: cityObj.id,
-        cityName: cityObj.name,
-        mode: 'manual',
-      },
-      formats: formatObj.formats,
-    });
-
-    router.push('/(onboarding)/interests');
+  const chooseArea = (next: DiscoveryArea) => {
+    setArea(next);
+    setSearching(false);
+    setQuery('');
   };
 
+  const startSearch = () => {
+    setArea(null);
+    setSearching(true);
+    requestAnimationFrame(() => searchRef.current?.focus());
+  };
+
+  const pickCity = (city: City) => {
+    searchRef.current?.blur();
+    chooseArea({ kind: 'city', city });
+  };
+
+  const advance = () => {
+    update.mutate(
+      { area, format: onlineOnly ? null : format },
+      { onSuccess: () => router.push('/(onboarding)/interests') },
+    );
+  };
+
+  const formats: { value: FormatPreference; label: string }[] = [
+    { value: 'in_person', label: t('onboarding.formatInPerson') },
+    { value: 'online', label: t('onboarding.formatOnline') },
+    { value: 'both', label: t('onboarding.formatBoth') },
+  ];
+
   return (
-    <Screen style={styles.container} scrollable>
-      {/* ─── Header ─── */}
-      <View style={styles.header}>
-        <View
-          style={[styles.iconCircle, { backgroundColor: colors.primarySoft }]}
-        >
-          <MapPin size={24} color={colors.primary} />
-        </View>
-        <ThemeText variant="h1" style={styles.title}>
-          Where should we look for events near you?
-        </ThemeText>
-        <ThemeText
-          variant="body"
-          themeColor="textMuted"
-          style={styles.subtitle}
-        >
-          Choose your primary discovery city. You can still discover online
-          events from anywhere.
-        </ThemeText>
-      </View>
-
-      {/* ─── City Selection List ─── */}
-      <View style={styles.cityList}>
-        {CITIES.map((city) => {
-          const isSelected = selectedCityId === city.id;
-          return (
-            <Card
-              key={city.id}
-              variant="outlined"
-              padding="md"
-              onPress={() => setSelectedCityId(city.id)}
-              style={[
-                styles.cityCard,
-                {
-                  borderColor: isSelected ? colors.primary : colors.border,
-                  backgroundColor: isSelected
-                    ? colors.primarySoft
-                    : colors.surface,
-                },
-              ]}
-            >
-              <View style={styles.cityCardContent}>
-                <View style={styles.cityInfo}>
-                  <ThemeText variant="title" style={styles.cityName}>
-                    {city.name}
-                  </ThemeText>
-                  <ThemeText variant="caption" themeColor="textMuted">
-                    {city.subtitle}
-                  </ThemeText>
-                </View>
-                {isSelected && (
-                  <View
-                    style={[
-                      styles.selectedBadge,
-                      { backgroundColor: colors.primary },
-                    ]}
-                  >
-                    <Navigation size={12} color={colors.textInverse} />
-                  </View>
-                )}
-              </View>
-            </Card>
-          );
-        })}
-      </View>
-
-      {/* ─── Format Preference Selector ─── */}
-      <View style={styles.formatSection}>
-        <ThemeText variant="subtitle" style={styles.formatTitle}>
-          Event Formats
-        </ThemeText>
-        <View style={styles.formatChips}>
-          {FORMAT_PREFERENCES.map((opt) => {
-            const isSelected = selectedFormatId === opt.id;
-            const Icon = opt.icon;
-            return (
-              <Pressable
-                key={opt.id}
-                onPress={() => setSelectedFormatId(opt.id)}
-                style={[
-                  styles.formatChip,
-                  {
-                    borderColor: isSelected ? colors.primary : colors.border,
-                    backgroundColor: isSelected
-                      ? colors.primarySoft
-                      : colors.surface,
-                  },
-                ]}
-              >
-                <Icon
-                  size={16}
-                  color={isSelected ? colors.primary : colors.textMuted}
-                />
-                <View style={styles.formatTextGroup}>
-                  <ThemeText
-                    variant="caption"
-                    style={{
-                      color: isSelected ? colors.primary : colors.text,
-                      fontWeight: isSelected ? '600' : '400',
-                    }}
-                  >
-                    {opt.label}
-                  </ThemeText>
-                  {opt.badge && (
-                    <ThemeText
-                      variant="caption"
-                      style={{ color: colors.primary, fontSize: 10 }}
-                    >
-                      ({opt.badge})
-                    </ThemeText>
-                  )}
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* ─── Footer ─── */}
-      <View style={styles.footer}>
-        <Button
-          title="Continue"
-          variant="primary"
-          size="large"
-          onPress={handleContinue}
+    <OnboardingStep
+      step={1}
+      title={t('onboarding.whereTitle')}
+      subtitle={t('onboarding.whereSubtitle')}
+      hasSelection={area !== null || format !== null}
+      onAdvance={advance}
+      saving={update.isPending}
+      saveError={update.isError}
+      onBack={onBack}
+      footnote={t('onboarding.privacy')}
+    >
+      <ChoiceGroup single label={t('onboarding.cityLabel')}>
+        {QUICK_PICK_CITIES.map((city) => (
+          <Chip
+            key={city.id}
+            role="radio"
+            label={city.name}
+            selected={area?.kind === 'city' && area.city.id === city.id}
+            onPress={() => chooseArea({ kind: 'city', city })}
+          />
+        ))}
+        <Chip
+          role="radio"
+          label={otherCity?.name ?? t('onboarding.otherCity')}
+          selected={searching || otherCity !== null}
+          onPress={startSearch}
+          testID="city-other"
         />
-        <ThemeText
-          variant="caption"
-          themeColor="textMuted"
-          style={styles.privacyNote}
+        <Chip
+          role="radio"
+          label={t('onboarding.onlineOnly')}
+          selected={onlineOnly}
+          onPress={() => chooseArea({ kind: 'online_only' })}
+        />
+      </ChoiceGroup>
+
+      {searching ? (
+        <Animated.View entering={reveal} exiting={hide} style={styles.search}>
+          <SearchInput
+            ref={searchRef}
+            value={query}
+            onChangeText={setQuery}
+            accessibilityLabel={t('onboarding.citySearchLabel')}
+            placeholder={t('onboarding.citySearchPlaceholder')}
+            clearLabel={t('common.clear')}
+            autoCapitalize="words"
+            onSubmitEditing={() => {
+              if (results[0]) pickCity(results[0]);
+            }}
+            testID="city-search"
+          />
+          {query.trim() ? (
+            results.length > 0 ? (
+              <CityResults results={results} onPick={pickCity} />
+            ) : (
+              <Text
+                variant="callout"
+                tone="muted"
+                accessibilityLiveRegion="polite"
+              >
+                {t('onboarding.cityNoMatch', { query: query.trim() })}
+              </Text>
+            )
+          ) : null}
+        </Animated.View>
+      ) : null}
+
+      <LayoutAnimationConfig skipEntering>
+        {onlineOnly ? null : (
+          <Animated.View entering={reveal} exiting={hide} layout={settle}>
+            <ChoiceGroup single label={t('onboarding.formatLabel')}>
+              {formats.map((option) => (
+                <Chip
+                  key={option.value}
+                  role="radio"
+                  label={option.label}
+                  selected={format === option.value}
+                  onPress={() => setFormat(option.value)}
+                />
+              ))}
+            </ChoiceGroup>
+          </Animated.View>
+        )}
+      </LayoutAnimationConfig>
+    </OnboardingStep>
+  );
+}
+
+function CityResults({
+  results,
+  onPick,
+}: {
+  results: City[];
+  onPick: (city: City) => void;
+}) {
+  const colors = useTheme();
+  return (
+    <View
+      accessibilityRole="list"
+      style={[
+        styles.results,
+        { borderColor: colors.border, backgroundColor: colors.surface },
+      ]}
+    >
+      {results.map((city, index) => (
+        <Pressable
+          key={city.id}
+          accessibilityRole="button"
+          onPress={() => onPick(city)}
+          style={({ pressed }) => [
+            styles.result,
+            index > 0 && {
+              borderTopColor: colors.borderSubtle,
+              borderTopWidth: StyleSheet.hairlineWidth,
+            },
+            pressed && { backgroundColor: colors.surfaceSunken },
+          ]}
         >
-          🔒 Privacy note: Manual city choice only. No GPS or IP tracking.
-        </ThemeText>
-      </View>
-    </Screen>
+          <Text variant="body">{city.name}</Text>
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 32,
+  search: {
+    gap: Spacing.sm,
+    marginTop: -Spacing.md,
   },
-  header: {
-    marginBottom: 20,
+  results: {
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
   },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  result: {
+    minHeight: TouchTargets.recommended,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 22,
-    marginBottom: 8,
-  },
-  subtitle: {
-    lineHeight: 20,
-  },
-  cityList: {
-    gap: 10,
-    marginBottom: 20,
-  },
-  cityCard: {
-    borderWidth: 1.5,
-  },
-  cityCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cityInfo: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  cityName: {
-    fontSize: 16,
-    marginBottom: 2,
-  },
-  selectedBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  formatSection: {
-    marginBottom: 24,
-  },
-  formatTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
-  formatChips: {
-    gap: 8,
-  },
-  formatChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1.5,
-  },
-  formatTextGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  footer: {
-    gap: 12,
-    marginTop: 4,
-  },
-  privacyNote: {
-    textAlign: 'center',
-    fontSize: 12,
+    paddingHorizontal: Spacing.lg,
   },
 });

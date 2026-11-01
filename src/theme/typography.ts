@@ -1,134 +1,80 @@
-import { Platform } from 'react-native';
+import type { TextStyle } from 'react-native';
+
+/**
+ * Manrope is loaded per weight by `useFonts` in the root layout. Custom fonts
+ * do not synthesise weights on Android, so each weight is its own family and
+ * `fontWeight` is never relied on. Headlines use ExtraBold with tight
+ * tracking, the signature of the brand (BRAND.md).
+ */
+export const Fonts = {
+  regular: 'Manrope_400Regular',
+  medium: 'Manrope_500Medium',
+  semiBold: 'Manrope_600SemiBold',
+  bold: 'Manrope_700Bold',
+  extraBold: 'Manrope_800ExtraBold',
+} as const;
+
+export type FontWeightName = keyof typeof Fonts;
 
 export const Families = {
-  // Use Inter as primary font family, falling back to system default
-  sans: Platform.select({
-    ios: 'Inter',
-    android: 'Inter',
-    web: 'Inter, system-ui, -apple-system, sans-serif',
-    default: 'normal',
-  }),
-  serif: Platform.select({
-    ios: 'Georgia',
-    android: 'serif',
-    web: 'Georgia, serif',
-    default: 'serif',
-  }),
-  mono: Platform.select({
-    ios: 'Courier New',
-    android: 'monospace',
-    web: 'monospace',
-    default: 'monospace',
-  }),
+  sans: Fonts.regular,
+  mono: 'monospace',
 };
 
-export const Sizes = {
-  display: 36,
-  h1: 30,
-  h2: 24,
-  h3: 20,
-  title: 18,
-  bodyLarge: 16,
-  body: 14,
-  bodySmall: 12,
-  label: 14,
-  caption: 11,
-  metadata: 10,
-};
+export type TextStyleName =
+  | 'display'
+  | 'title1'
+  | 'title2'
+  | 'headline'
+  | 'body'
+  | 'callout'
+  | 'label'
+  | 'footnote'
+  | 'caption';
 
-export const Weights = {
-  bold: '700' as const,
-  semiBold: '600' as const,
-  medium: '500' as const,
-  regular: '400' as const,
-  light: '300' as const,
-};
-
-export const LineHeights = {
-  display: 44,
-  h1: 38,
-  h2: 32,
-  h3: 26,
-  title: 24,
-  bodyLarge: 22,
-  body: 20,
-  bodySmall: 16,
-  label: 20,
-  caption: 14,
-  metadata: 12,
-};
-
-export const Typography = {
+/**
+ * The type scale. 12px is the floor: nothing in the consumer app is smaller.
+ * `label` is the interactive variant of `callout` (buttons, chips, tabs).
+ */
+export const TextStyles: Record<TextStyleName, TextStyle> = {
   display: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.display,
-    fontWeight: Weights.bold,
-    lineHeight: LineHeights.display,
+    fontFamily: Fonts.extraBold,
+    fontSize: 34,
+    lineHeight: 38,
+    letterSpacing: -1.2,
   },
-  h1: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.h1,
-    fontWeight: Weights.bold,
-    lineHeight: LineHeights.h1,
+  title1: {
+    fontFamily: Fonts.extraBold,
+    fontSize: 26,
+    lineHeight: 31,
+    letterSpacing: -0.7,
   },
-  h2: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.h2,
-    fontWeight: Weights.semiBold,
-    lineHeight: LineHeights.h2,
+  title2: {
+    fontFamily: Fonts.bold,
+    fontSize: 20,
+    lineHeight: 26,
+    letterSpacing: -0.3,
   },
-  h3: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.h3,
-    fontWeight: Weights.semiBold,
-    lineHeight: LineHeights.h3,
-  },
-  title: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.title,
-    fontWeight: Weights.medium,
-    lineHeight: LineHeights.title,
-  },
-  bodyLarge: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.bodyLarge,
-    fontWeight: Weights.regular,
-    lineHeight: LineHeights.bodyLarge,
-  },
-  body: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.body,
-    fontWeight: Weights.regular,
-    lineHeight: LineHeights.body,
-  },
-  bodySmall: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.bodySmall,
-    fontWeight: Weights.regular,
-    lineHeight: LineHeights.bodySmall,
-  },
-  label: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.label,
-    fontWeight: Weights.medium,
-    lineHeight: LineHeights.label,
-  },
-  caption: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.caption,
-    fontWeight: Weights.regular,
-    lineHeight: LineHeights.caption,
-  },
-  button: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.body,
-    fontWeight: Weights.semiBold,
-    lineHeight: LineHeights.body,
-  },
-  metadata: {
-    fontFamily: Families.sans,
-    fontSize: Sizes.metadata,
-    fontWeight: Weights.regular,
-    lineHeight: LineHeights.metadata,
-  },
+  headline: { fontFamily: Fonts.bold, fontSize: 17, lineHeight: 22 },
+  body: { fontFamily: Fonts.regular, fontSize: 16, lineHeight: 24 },
+  callout: { fontFamily: Fonts.regular, fontSize: 15, lineHeight: 20 },
+  label: { fontFamily: Fonts.bold, fontSize: 15, lineHeight: 20 },
+  footnote: { fontFamily: Fonts.regular, fontSize: 13, lineHeight: 18 },
+  caption: { fontFamily: Fonts.medium, fontSize: 12, lineHeight: 16 },
+};
+
+/** Older names still read by screens that have not moved to `Text`. */
+export const Typography = {
+  display: TextStyles.display,
+  h1: TextStyles.title1,
+  h2: TextStyles.title2,
+  h3: TextStyles.title2,
+  title: TextStyles.headline,
+  bodyLarge: TextStyles.body,
+  body: TextStyles.callout,
+  bodySmall: TextStyles.footnote,
+  label: TextStyles.label,
+  caption: TextStyles.caption,
+  button: TextStyles.label,
+  metadata: TextStyles.caption,
 };

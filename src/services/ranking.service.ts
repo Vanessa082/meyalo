@@ -1,201 +1,283 @@
-import type { LocalDiscoveryProfile } from '@/types/discovery-profile';
-import type { EventCardData } from '@/types/event.type';
+import { CITY_CENTERS } from '../config/discovery/cities.ts';
+import { GOAL_OFFERS, type GoalId } from '../config/discovery/goals.ts';
+import type { TopicId } from '../config/discovery/topics.ts';
+import type { LocalDiscoveryProfile } from '../types/discovery-profile.ts';
+import type { EventCardData } from '../types/event.type.ts';
+import type { Affinity } from './affinity.ts';
+import { effectiveFormat } from './discovery-profile.ts';
+import { distanceKm, samePlace } from './geo.ts';
+import { DAY_MS } from './zoned-time.ts';
 
-export interface UserPreferences {
-  city: string;
-  formatPreference: 'both' | 'physical' | 'virtual';
-  interests: string[];
-  goals: string[];
-}
+/**
+ * For You ranking (docs/product-decisions.md, Features 3 and 5).
+ *
+ * Deterministic and explainable: hard rules decide what may appear, then a
+ * weighted score orders the matches. Runs on device; the profile never leaves
+ * the phone. Learned affinity only reorders matches; see services/affinity.ts.
+ */
 
-export interface RankedEvent {
+/** Why an event was picked. The UI turns these into translated text. */
+export type MatchReason =
+  | { kind: 'topic'; topicId: TopicId }
+  | { kind: 'goal'; goalId: GoalId }
+  | { kind: 'soon' }
+  /** Registration closes within a week. Listed first. */
+  | { kind: 'deadline' }
+  /** Learned habits lifted it. */
+  | { kind: 'habit' };
+
+export interface TopPick {
   event: EventCardData;
-  score: number;
-  relevanceReason: string;
+  reasons: MatchReason[];
 }
 
-/**
- * Normalizes input from either UserPreferences or LocalDiscoveryProfile
- */
-function normalizeProfile(
-  input?: UserPreferences | LocalDiscoveryProfile | null,
-): UserPreferences {
-  if (!input) {
-    return {
-      city: 'yaounde',
-      formatPreference: 'both',
-      interests: [],
-      goals: [],
-    };
-  }
-
-  // Handle LocalDiscoveryProfile
-  if ('schemaVersion' in input && input.schemaVersion === 1) {
-    const profile = input as LocalDiscoveryProfile;
-    let formatPref: 'both' | 'physical' | 'virtual' = 'both';
-    if (
-      profile.formats.includes('in_person') &&
-      !profile.formats.includes('virtual')
-    ) {
-      formatPref = 'physical';
-    } else if (
-      profile.formats.includes('virtual') &&
-      !profile.formats.includes('in_person')
-    ) {
-      formatPref = 'virtual';
-    }
-
-    return {
-      city: profile.location.cityName || profile.location.cityId || 'yaounde',
-      formatPreference: formatPref,
-      interests: profile.interestIds || [],
-      goals: profile.goalIds || [],
-    };
-  }
-
-  // Handle legacy UserPreferences
-  return input as UserPreferences;
+export interface ForYouFeed {
+  /** True when the profile has at least one usable signal. */
+  personalized: boolean;
+  /** Up to MAX_TOP_PICKS matches, at most one per organizer. */
+  topPicks: TopPick[];
+  /** Every other eligible event, soonest first. */
+  moreUpcoming: EventCardData[];
+  /** In-person events in other cities that match the profile, nearest first.
+   *  `distanceKm` is set when both the user's city and the event are located. */
+  beyondCity: EventCardData[];
 }
 
-/**
- * Calculates a deterministic relevance score and human-readable explanation for an event.
- * Adheres strictly to Meyalo Blueprint Section 5.1 & Privacy Profile guidelines.
- */
-export function rankEventForUser(
+const MAX_TOP_PICKS = 5;
+const MAX_REASONS = 3;
+/** Lower shows first; a sort keeps the original order within a kind. */
+const REASON_PRIORITY: Record<MatchReason['kind'], number> = {
+  deadline: 0,
+  habit: 1,
+  topic: 2,
+  goal: 2,
+  soon: 3,
+};
+/** Mix, not repeat: top picks sharing one topic. */
+const MAX_PICKS_PER_TOPIC = 2;
+
+const WEIGHTS = {
+  interest: 35,
+  goal: 30,
+  timingThisWeek: 15,
+  timingThisMonth: 8,
+  organizerConfirmed: 5,
+  sourceConfirmed: 3,
+  /** Multiplies an affinity score between -1 and 1. */
+  affinity: 15,
+  /** A match whose registration closes within a week. */
+  deadlineSoon: 12,
+  /** Checked in the last 14 days, or not for 45. */
+  freshCheck: 3,
+  staleCheck: -3,
+} as const;
+
+const DEADLINE_SOON_MS = 7 * DAY_MS;
+const FRESH_MS = 14 * DAY_MS;
+const STALE_MS = 45 * DAY_MS;
+
+export interface ForYouOptions {
+  /** Marked "Not interested" on this phone; never shown. */
+  hiddenIds?: ReadonlySet<string>;
+  affinity?: Affinity;
+}
+
+type Placement = 'excluded' | 'local' | 'other_city';
+
+export function buildForYouFeed(
+  events: readonly EventCardData[],
+  profile: LocalDiscoveryProfile | null,
+  now: Date = new Date(),
+  { hiddenIds, affinity }: ForYouOptions = {},
+): ForYouFeed {
+  const interests = profile?.interestIds ?? [];
+  const goals = profile?.goalIds ?? [];
+  const personalized = interests.length > 0 || goals.length > 0;
+
+  const local: EventCardData[] = [];
+  const otherCity: EventCardData[] = [];
+  for (const event of events) {
+    if (hiddenIds?.has(event.id)) continue;
+    const placement = place(event, profile, now);
+    if (placement === 'local') local.push(event);
+    else if (placement === 'other_city') otherCity.push(event);
+  }
+  local.sort(bySoonest);
+
+  if (!personalized) {
+    // Cold start: date order, no reasons shown.
+    return { personalized, topPicks: [], moreUpcoming: local, beyondCity: [] };
+  }
+
+  const scored = local
+    .map((event) => score(event, interests, goals, now, affinity))
+    .filter((item) => item.matched)
+    .sort((a, b) => b.points - a.points || bySoonest(a.event, b.event));
+
+  const topPicks: TopPick[] = [];
+  const organizers = new Set<string>();
+  const perTopic = new Map<string, number>();
+  for (const item of scored) {
+    if (topPicks.length === MAX_TOP_PICKS) break;
+    const organizer = item.event.organizerName.trim().toLowerCase();
+    if (organizers.has(organizer)) continue;
+    // The topic it was picked for: the first of the person's interests it
+    // matches, else its own first topic.
+    const topic =
+      interests.find((id) => item.event.topics.includes(id)) ??
+      item.event.topics[0];
+    if (topic && (perTopic.get(topic) ?? 0) >= MAX_PICKS_PER_TOPIC) continue;
+    organizers.add(organizer);
+    if (topic) perTopic.set(topic, (perTopic.get(topic) ?? 0) + 1);
+    topPicks.push({
+      event: item.event,
+      // The most telling reasons first, so the limit cuts the least useful.
+      reasons: [...item.reasons]
+        .sort((a, b) => REASON_PRIORITY[a.kind] - REASON_PRIORITY[b.kind])
+        .slice(0, MAX_REASONS),
+    });
+  }
+
+  const picked = new Set(topPicks.map((pick) => pick.event.id));
+  const moreUpcoming = local.filter((event) => !picked.has(event.id));
+
+  const beyondCity = otherCity
+    .filter((event) => score(event, interests, goals, now).matched)
+    .map((event) => withDistance(event, profile))
+    .sort(
+      (a, b) =>
+        Number(affinity?.isTooFar(a) ?? false) -
+          Number(affinity?.isTooFar(b) ?? false) || byNearestThenSoonest(a, b),
+    );
+
+  return { personalized, topPicks, moreUpcoming, beyondCity };
+}
+
+/** Not cancelled, not ended, and not started yet. */
+export function isUpcoming(event: EventCardData, now: Date): boolean {
+  if (event.status === 'cancelled' || event.status === 'completed') {
+    return false;
+  }
+  return Date.parse(event.startsAt) >= now.getTime();
+}
+
+/** Hard rules. Nothing excluded here is ever shown in For You. */
+function place(
   event: EventCardData,
-  prefsInput?: UserPreferences | LocalDiscoveryProfile | null,
-): RankedEvent {
-  if (!event) {
-    return {
-      event,
-      score: 0,
-      relevanceReason: 'Growth opportunity',
-    };
+  profile: LocalDiscoveryProfile | null,
+  now: Date,
+): Placement {
+  if (!isUpcoming(event, now)) return 'excluded';
+  if (!profile) return 'local';
+
+  const format = effectiveFormat(profile);
+  if (format === 'in_person' && event.format === 'virtual') return 'excluded';
+  if (format === 'online' && event.format === 'in_person') return 'excluded';
+
+  // Online events are eligible wherever the user is.
+  if (event.format === 'virtual') return 'local';
+  if (profile.area?.kind !== 'city') return 'local';
+  if (!event.city) return 'local';
+  if (samePlace(event.city, profile.area.city.name)) return 'local';
+  // A hybrid event elsewhere is still held in another city: it goes with the
+  // other cities, unless this person only attends online anyway.
+  if (event.format === 'hybrid' && format === 'online') return 'local';
+  return 'other_city';
+}
+
+function score(
+  event: EventCardData,
+  interests: readonly TopicId[],
+  goals: readonly GoalId[],
+  now: Date,
+  affinity?: Affinity,
+): {
+  event: EventCardData;
+  points: number;
+  matched: boolean;
+  reasons: MatchReason[];
+} {
+  const reasons: MatchReason[] = [];
+  let points = 0;
+
+  const topicMatches = interests.filter((id) => event.topics.includes(id));
+  if (topicMatches.length > 0) points += WEIGHTS.interest;
+  for (const topicId of topicMatches) reasons.push({ kind: 'topic', topicId });
+
+  const goalMatches = goals.filter((id) =>
+    GOAL_OFFERS[id].some((offer) => event.offers.includes(offer)),
+  );
+  if (goalMatches.length > 0) points += WEIGHTS.goal;
+  for (const goalId of goalMatches) reasons.push({ kind: 'goal', goalId });
+
+  const matched = reasons.length > 0;
+
+  const daysAway = (Date.parse(event.startsAt) - now.getTime()) / DAY_MS;
+  if (daysAway <= 7) {
+    points += WEIGHTS.timingThisWeek;
+    if (matched) reasons.push({ kind: 'soon' });
+  } else if (daysAway <= 30) {
+    points += WEIGHTS.timingThisMonth;
   }
 
-  const prefs = normalizeProfile(prefsInput);
-  let score = 10; // Baseline score for active growth event
-  const matchedReasons: string[] = [];
-
-  // 1. Format Exclusion Guard Clauses
-  if (prefs.formatPreference === 'physical' && event.format === 'virtual') {
-    return {
-      event,
-      score: -100,
-      relevanceReason: 'Filtered by virtual preference',
-    };
-  }
-  if (prefs.formatPreference === 'virtual' && event.format === 'in_person') {
-    return {
-      event,
-      score: -100,
-      relevanceReason: 'Filtered by physical preference',
-    };
+  if (event.verificationState === 'organizer_confirmed') {
+    points += WEIGHTS.organizerConfirmed;
+  } else if (event.verificationState === 'source_confirmed') {
+    points += WEIGHTS.sourceConfirmed;
   }
 
-  // 2. Interest Match (+30 pts per match)
-  const categoryStr = (
-    event.primaryCategory ??
-    event.eventType ??
-    ''
-  ).toLowerCase();
-  const userInterests = prefs.interests ?? [];
-
-  for (const interest of userInterests) {
-    if (categoryStr.includes(interest.toLowerCase())) {
-      score += 30;
-      matchedReasons.push(formatInterestLabel(interest));
-    }
+  const deadline = event.registrationDeadline
+    ? Date.parse(event.registrationDeadline) - now.getTime()
+    : Number.NaN;
+  if (matched && deadline >= 0 && deadline <= DEADLINE_SOON_MS) {
+    points += WEIGHTS.deadlineSoon;
+    reasons.unshift({ kind: 'deadline' });
   }
 
-  // 3. Goal Match (+25 pts)
-  const userGoals = prefs.goals ?? [];
-  if (
-    userGoals.some((g) => g.includes('business') || g.includes('funding')) &&
-    (categoryStr.includes('business') || categoryStr.includes('finance'))
-  ) {
-    score += 25;
-    matchedReasons.push('Grow business');
-  }
-  if (
-    userGoals.some((g) => g.includes('career') || g.includes('job')) &&
-    (categoryStr.includes('career') || categoryStr.includes('job'))
-  ) {
-    score += 25;
-    matchedReasons.push('Career goal');
-  }
-  if (
-    userGoals.some((g) => g.includes('skills') || g.includes('learn')) &&
-    (categoryStr.includes('tech') ||
-      categoryStr.includes('masterclass') ||
-      categoryStr.includes('software'))
-  ) {
-    score += 25;
-    matchedReasons.push('Learn skills');
+  const checked = event.lastCheckedAt
+    ? now.getTime() - Date.parse(event.lastCheckedAt)
+    : Number.NaN;
+  if (checked <= FRESH_MS) points += WEIGHTS.freshCheck;
+  else if (checked >= STALE_MS) points += WEIGHTS.staleCheck;
+
+  if (affinity) {
+    points += WEIGHTS.affinity * affinity.score(event);
+    if (matched && affinity.isHabit(event)) reasons.push({ kind: 'habit' });
   }
 
-  // 4. Physical City Match (+20 pts)
-  if (event.format !== 'virtual' && event.city && prefs.city) {
-    if (
-      event.city.toLowerCase().includes(prefs.city.toLowerCase()) ||
-      prefs.city.toLowerCase().includes(event.city.toLowerCase())
-    ) {
-      score += 20;
-      matchedReasons.push(event.city);
-    }
+  return { event, points, matched, reasons };
+}
+
+function withDistance(
+  event: EventCardData,
+  profile: LocalDiscoveryProfile | null,
+): EventCardData {
+  const center =
+    profile?.area?.kind === 'city'
+      ? CITY_CENTERS[profile.area.city.id]
+      : undefined;
+  if (!center || event.latitude == null || event.longitude == null) {
+    return event;
   }
-
-  // 5. Freshness Trust Boost (+10 pts)
-  if (event.lastCheckedAt) {
-    score += 10;
-  }
-
-  // Deduplicate and format reason string
-  const uniqueReasons = Array.from(new Set(matchedReasons));
-  const reasonText =
-    uniqueReasons.length > 0
-      ? `Why this fits: ${uniqueReasons.slice(0, 3).join(' · ')}`
-      : 'Growth opportunity around you';
-
   return {
-    event: {
-      ...event,
-      relevanceReasons: [reasonText],
-    },
-    score,
-    relevanceReason: reasonText,
+    ...event,
+    distanceKm: distanceKm(center, {
+      lat: event.latitude,
+      lng: event.longitude,
+    }),
   };
 }
 
-/**
- * Ranks an array of events descending by score. Filters out hard exclusions (score < 0).
- */
-export function rankEventsList(
-  events: EventCardData[],
-  prefsInput?: UserPreferences | LocalDiscoveryProfile | null,
-): EventCardData[] {
-  if (!events || events.length === 0) return [];
-
-  return events
-    .map((e) => rankEventForUser(e, prefsInput))
-    .filter((item) => item.score >= 0)
-    .sort((a, b) => b.score - a.score)
-    .map((item) => item.event);
+function bySoonest(a: EventCardData, b: EventCardData): number {
+  return Date.parse(a.startsAt) - Date.parse(b.startsAt);
 }
 
-function formatInterestLabel(interest: string): string {
-  const map: Record<string, string> = {
-    business: 'Business',
-    technology: 'Technology',
-    career: 'Career',
-    finance: 'Finance',
-    agriculture: 'Agriculture',
-    healthcare: 'Healthcare',
-    education: 'Education',
-    creative_media: 'Creative & Media',
-    engineering: 'Engineering',
-    climate_energy: 'Climate & Energy',
-    masterclass: 'Masterclass',
-  };
-  return map[interest.toLowerCase()] ?? interest;
+/** Located events first, nearest first; the rest by date. */
+function byNearestThenSoonest(a: EventCardData, b: EventCardData): number {
+  if (a.distanceKm != null && b.distanceKm != null) {
+    return a.distanceKm - b.distanceKm || bySoonest(a, b);
+  }
+  if (a.distanceKm != null) return -1;
+  if (b.distanceKm != null) return 1;
+  return bySoonest(a, b);
 }

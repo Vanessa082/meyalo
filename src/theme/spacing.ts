@@ -14,9 +14,20 @@ export const Spacing = {
   layoutCard: 12,
 } as const;
 
+export const Layout = {
+  /** Horizontal screen padding; wider phones get more room. */
+  gutter: 16,
+  gutterWide: 20,
+  /** Width at which `gutterWide` applies. */
+  wideFrom: 380,
+  sectionGap: 32,
+  /** Reading width for single-column flows on tablets and the web. */
+  readableWidth: 560,
+} as const;
+
 export const TouchTargets = {
-  minimum: 44, // Apple HIG min touch target
-  recommended: 48, // Material design min touch target
+  minimum: 44,
+  recommended: 48,
 } as const;
 
 export const Dimensions = {

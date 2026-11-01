@@ -1,60 +1,65 @@
 /**
  * ForYouGreeting
  *
- * Auth-aware greeting. Shows "Good afternoon 👋" without a name when the
- * user is not authenticated. A first name is only shown once logged in.
+ * Greeting, headline and the city selector. A first name is shown only for a
+ * signed-in user; guests get the greeting alone.
  */
 import { ChevronDown, MapPin } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ThemeText } from '@/components/ui/theme-text';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/text';
 import { useTheme } from '@/hooks/use-theme';
+import type { TxKeyPath } from '@/i18n';
+import { useTranslation } from '@/i18n/locale-provider';
+import { Spacing, TouchTargets } from '@/theme';
 
-function getGreetingPrefix(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+function greetingKey(hour: number): TxKeyPath {
+  if (hour < 12) return 'forYou.greetingMorning';
+  if (hour < 17) return 'forYou.greetingAfternoon';
+  return 'forYou.greetingEvening';
 }
 
 interface ForYouGreetingProps {
-  /** Pass only when the user is authenticated. Leave undefined for guests. */
+  /** Pass only when the user is signed in. */
   firstName?: string | null;
-  cityName?: string;
-  countryName?: string;
+  /** The profile area: a city name, online only, or not chosen. */
+  area: { kind: 'city'; name: string } | { kind: 'online_only' } | null;
   onPressLocation?: () => void;
 }
 
 export function ForYouGreeting({
   firstName,
-  cityName = 'Yaoundé',
-  countryName = 'Cameroon',
+  area,
   onPressLocation,
 }: ForYouGreetingProps) {
   const colors = useTheme();
-  const prefix = getGreetingPrefix();
+  const { t } = useTranslation();
+  const prefix = t(greetingKey(new Date().getHours()));
+  const greeting = firstName ? `${prefix}, ${firstName}` : prefix;
 
-  // Only append the user's name when authenticated and known.
-  const greeting = firstName ? `${prefix}, ${firstName} 👋` : `${prefix} 👋`;
+  const location =
+    area?.kind === 'city'
+      ? t('forYou.cityCountry', { city: area.name })
+      : area?.kind === 'online_only'
+        ? t('forYou.onlineOnly')
+        : t('forYou.chooseCity');
 
   return (
-    <View style={styles.greetingContainer}>
-      <ThemeText variant="caption" style={styles.greetingText}>
+    <View style={styles.container}>
+      <Text variant="callout" tone="muted">
         {greeting}
-      </ThemeText>
-
-      <Text style={[styles.mainHeaderTitle, { color: colors.text }]}>
-        Here&apos;s what&apos;s happening{'\n'}around{' '}
-        <Text style={styles.highlightYou}>you</Text>
       </Text>
-
-      <Pressable style={styles.locationSelector} onPress={onPressLocation}>
-        <MapPin size={16} color="#087F73" strokeWidth={2.2} />
-        <ThemeText
-          variant="subhead"
-          style={[styles.locationText, { color: colors.text }]}
-        >
-          {cityName}, {countryName}
-        </ThemeText>
+      <Text variant="title1" accessibilityRole="header">
+        {t('forYou.headline')}
+      </Text>
+      <Pressable
+        style={styles.locationSelector}
+        onPress={onPressLocation}
+        accessibilityRole="button"
+        accessibilityLabel={location}
+        hitSlop={8}
+      >
+        <MapPin size={16} color={colors.primary} strokeWidth={2.2} />
+        <Text variant="label">{location}</Text>
         <ChevronDown size={16} color={colors.textMuted} strokeWidth={2} />
       </Pressable>
     </View>
@@ -62,31 +67,15 @@ export function ForYouGreeting({
 }
 
 const styles = StyleSheet.create({
-  greetingContainer: {
-    marginBottom: 20,
-  },
-  greetingText: {
-    fontSize: 14,
-    color: '#64748B',
-    marginBottom: 4,
-  },
-  mainHeaderTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    lineHeight: 30,
-    marginBottom: 8,
-  },
-  highlightYou: {
-    color: '#087F73',
+  container: {
+    gap: Spacing.xs,
   },
   locationSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: Spacing.sm,
     alignSelf: 'flex-start',
-  },
-  locationText: {
-    fontSize: 14,
-    fontWeight: '600',
+    // A full touch target, though it reads as a line of text.
+    minHeight: TouchTargets.minimum,
   },
 });
